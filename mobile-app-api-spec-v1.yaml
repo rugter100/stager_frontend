@@ -1,0 +1,4211 @@
+openapi: 3.1.0
+
+info:
+  title: Stager's mobile app API
+  contact:
+    name: Stager BV
+    url: "https://stager.co"
+    email: info@stager.co
+  description: |
+    This is the documentation for Stager's internal mobile app API, specified using the [OpenAPI](https://www.openapis.org)
+    (v3) standard. All request and response bodies should be in [JSON](https://en.wikipedia.org/wiki/JSON) format.
+    Their structure is defined in this spec.
+
+    The endpoints of this spec are used exclusively by Stager's mobile app.
+
+    In order to keep the API backwards compatible (older versions of the mobile application should not break due to
+    missing endpoints or otherwise changed specs) we will sometimes have seemingly duplicate endpoints in this spec.
+    We will try to clearly annotate such cases in their respective descriptions.
+
+    All `date-time` values should follow the ISO-8601 "offset from UTC" format (e.g.: `2025-02-14T10:15:30+01:00`).
+    This format contains **no** timezone suffix (like `CET`, `CEST`, `UTC` or `Z`) but an offset suffix
+    (i.e.: `+01:00` in the example above) to make data times both deterministic (also in the "double hour" when European
+    summer time ends and winter time starts) *and* human readable (you read the clock time, as you expect; in contrast
+    to using UTC times). Make sure to URL-encode the date-time, otherwise the `+` will be seen as a space.
+
+    Authentication makes use of [JWT](https://jwt.io)-formatted tokens that should be provided in the
+    "Authorization: Bearer" header of the requests.
+    These tokens will be provided by [signing in](/paths/mobile-user-sign-in/post) a user or device and contain both
+    the organization id and the user id.
+
+    All requests are made to the subdomain of the organization, e.g.: `https://venue.stager.co`.
+    The subdomain (i.e. `venue` in the example above) is used to determine what organization is being signed-in to.
+
+  version: '1.0.0'
+  license:
+    name: Copyright with Stager B.V.
+    url: 'https://en.wikipedia.org/wiki/All_rights_reserved'
+
+security:
+  - bearerAuth: [ ]
+
+paths:
+  /mobile/version: #Works fine
+    get:
+      summary: Version
+      description: |
+        Returns the version of the API, which is in turn the version of the mobile app. This uses semantic versioning.
+
+        The first number denotes a MAJOR update. This will be used when incompatible changes have been made. We want to
+        stay away from this. But we can decide to make an update MAJOR if we want all users to have to update to the
+        latest version.
+
+        The second number marks a MINOR update. These don't consist of any breaking changes, but most likely only add
+        functionality which can still be used in older versions.
+
+        The third and last is used for PATCH updates. These are used for backwards compatible bug fixes.
+
+        The version looks like `MAJOR.MINOR.PATCH`. E.g.: 4.1.5
+
+        Read https://semver.org for more information on semantic versioning.
+      responses:
+        '200':
+          description: The version for the API
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Version'
+      security: [ ]
+
+  /mobile/sign-in/account: # Works fine
+    post:
+      summary: Sign-in with account
+      description: |
+        Signs-in the account. The account can be a backstage user or crew member, or both. The session includes the
+        ID
+        Sign-in, i.e. create a session, with a regular user (a Backstage user in Stager), i.e. not scan device.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignInRequest'
+      responses:
+        '200':
+          description: If a user has been found with given credentials, the JWT token is provided as response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JwtToken'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security: [ ]
+
+  /mobile/sign-in/scan-device:
+    post:
+      summary: Sign-in with a scan device
+      description: |
+        Sign-in, i.e. create a session, with a scan device. This is part of a QR-code scanning sign-in flow.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignInScanDeviceRequest'
+      responses:
+        '200':
+          description: If the token encoded as the QR-code is correct, the JWT token is provided as response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JwtToken'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security: [ ]
+
+  /mobile/sign-in/account/current: #Works Fine
+    get:
+      summary: The currently signed-in account
+      description: |
+        Relevant information about the currently signed-in account. This can be a backstage user or crew member or both.
+        This will return a `userId` and `crewMemberId`. At least one is **not** `null`. If `crewMemberId` is not `null`,
+        then this signed in account has access to the crew hub. Likewise, if the `userId` is not `null`, then this
+        account has access to all pages for the given `permissions`.
+      responses:
+        '200':
+          description: Relevant information about the currently signed-in user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUser'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /mobile/scan-device/qr-code: #No mobile permission
+    get:
+      summary: Scan device QR code
+      description: The QR code that is used to register scan devices.
+      responses:
+        '200':
+          description: The QR code as an image.
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/calendar/filters: #No Mobile Perms
+    get:
+      summary: All calendar filters
+      description: All calendar filters for the current organization.
+      responses:
+        '200':
+          description: A list of all calendar filters for the current organization.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarFilter'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /mobile/calendar/items: #No Mobile Perms
+    get:
+      summary: All calendar items
+      description: |
+        All calendar items for the current organization, in a given month. When no month is provided the current month
+        is used as default value.
+      parameters:
+        - in: query
+          name: date
+          description: |
+            Events and notes will be fetched of the same month as the given date.
+            Defaults to the current month when omitted.
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: |
+            A list of the calendar items of the month of the given date. Items can be events and notes.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  oneOf:
+                    - $ref: '#/components/schemas/CalendarEvent'
+                    - $ref: '#/components/schemas/CalendarNote'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /mobile/calendar/event/{eventId}:
+    get:
+      summary: Event calendar details
+      description: Calendar details for the event with the given ID.
+      parameters:
+        - in: path
+          name: eventId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: |
+            Information of the event with the given ID.
+            Fields can vary. For instance, in case the event is a multi access event.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/CalendarMultiAccessEvent'
+                  - $ref: '#/components/schemas/CalendarRegularEvent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/calendar/note/{noteId}:
+    get:
+      summary: Calendar note info
+      description: Calendar details of the note with the given ID.
+      parameters:
+        - in: path
+          name: noteId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Details about the note with the given ID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarNoteInfo'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/contacts/search/{query}:
+    get:
+      summary: Search contacts
+      description: Search contacts based on a query. Searches contacts on full name or email address.
+      parameters:
+        - in: path
+          name: query
+          schema:
+            type: string
+          required: true
+          description: URL encoded query to search contacts by full name or email address.
+      responses:
+        '200':
+          description: A list of maximum 25 contacts.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SimpleContact'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /mobile/contacts/{contactId}:
+    get:
+      summary: Detailed contact information
+      description: Detailed information about the contact with the given ID.
+      parameters:
+        - in: path
+          name: contactId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Detailed contact information, such as phone numbers.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailedContact'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/events/scannable:
+    get:
+      summary: Events ready for scanning
+      description: Upcoming events within the upcoming minutes as provided by the optional query param.
+      parameters:
+        - in: query
+          name: minutes
+          description: |
+            How far in the future, expressed in a number of minutes, should events be part of the response.
+            When omitted the default value to 2880 minutes (2 days) is used.
+          required: false
+          schema:
+            type: integer
+            format: int32
+            example: 120
+      responses:
+        '200':
+          description: A list of maximum 150 events that are ready for scanning.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventWithTicketGroups'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /mobile/events/{eventId}/itineraries:
+    get:
+      summary: Event's itineraries
+      description: The itineraries for the event with the given `eventId`. Only published itineraries are shown.
+      parameters:
+        - in: path
+          name: eventId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: All itineraries of the event with the given `eventId`.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventItinerary'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/events/{eventId}/guests:
+    get:
+      summary: Event's guests
+      description: A list of guests for the event, no matter which type of guest list they belong to.
+      parameters:
+        - in: path
+          name: eventId
+          required: true
+          schema:
+            type: integer
+            format: int64
+            example: 1
+      responses:
+        '200':
+          description: A list of guests for the event with the provided `eventId`.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Guest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/events/{eventId}/guests/add:
+    post:
+      summary: Add one guest to the event
+      description: Add one guest to the event, which creates a new guest list and allocates tickets.
+      parameters:
+        - in: path
+          name: eventId
+          required: true
+          schema:
+            type: integer
+            format: int64
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GuestRequest'
+      responses:
+        '200':
+          description: The ID of the newly created guest and all guests for the given event.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddGuestResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/events/{eventId}/guests/add-batch:
+    post:
+      summary: Batch add guests to event
+      description: |
+        Bulk inserts up to 100 guests with up to 500 cumulative tickets into the guest list of an Event. Like the CSV
+        guest importer, this process first creates a placeholder reservation to pre-reserve all required tickets. Next,
+        a worker will gradually convert those reserved tickets into guests.
+        The ticket group id, an optional description and the list of guests need to be provided.
+      parameters:
+        - in: path
+          name: eventId
+          required: true
+          schema:
+            type: integer
+            format: int64
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchAddGuestRequest'
+      responses:
+        '200':
+          description: |
+            The number of added guests (the same as the size of the given guests array). Along with the current guests
+            for the given event. This most likely doesn't include any of the guests added in this batch, as this will be
+            done in a worker which might take some time to complete.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchAddGuestResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/events/{eventId}/guests/ticket-groups:
+    get:
+      summary: Ticket groups for guests
+      description: All guest ticket groups for the current event that are available for "door sales".
+      parameters:
+        - in: path
+          name: eventId
+          required: true
+          schema:
+            type: integer
+            format: int64
+            example: 1
+      responses:
+        '200':
+          description: A list of all guest ticket groups available for door sales.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TicketGroupWithAvailability'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/events/{eventId}/overview:
+    get:
+      summary: Event overview
+      description: The generic event information
+      parameters:
+        - in: path
+          name: eventId
+          required: true
+          schema:
+            type: integer
+            format: int64
+            example: 1
+      responses:
+        '200':
+          description: Generic event information.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventOverview'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/events/{eventId}/scan-insights:
+    get:
+      summary: Scan insights
+      description: |
+        Scan information the given event. The `from` and `to` dates are used to get the `data` from the `from` date-time
+        and until the `to` date-time. If both dates are omitted, the default range is 30 minutes
+      parameters:
+        - in: path
+          name: eventId
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - in: query
+          name: from
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: to
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: The scan insights for the event with the given event ID, within the provided time frame.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanInsight'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/events/summary:
+    get:
+      summary: Event summaries
+      description: The event summaries, possibly limited to the event that is queried by name (if any).
+      parameters:
+        - in: query
+          name: eventName
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A list of event summaries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventSummary'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /mobile/events/{eventId}/sales/range:
+    get:
+      summary: Sales info per day by event
+      description: Sales info per day for a specific time frame and event.
+      parameters:
+        - in: path
+          name: eventId
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - in: query
+          name: from
+          required: false
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: to
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: The event sales overview.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventSalesPerDayForEvent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/events/{eventId}/sales/ticket-types:
+    get:
+      summary: Sales info per ticket type by event
+      description: Sales info per ticket type for a specific time frame and event.
+      parameters:
+        - in: path
+          name: eventId
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - in: query
+          name: from
+          required: false
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: to
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: The event sales overview.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventSalesPerDayForTicketType'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/events/sales/range:
+    get:
+      summary: Sales info per day
+      description: Sales info per day for a specific range.
+      parameters:
+        - in: query
+          name: from
+          required: false
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: to
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: |
+            Sales info of both a period as for every day within the period between the given parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventSalesPerDayForRange'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /mobile/events/sales/bestsellers:
+    get:
+      summary: The bestsellers
+      description: A list of ten top grossing events sorted by revenue.
+      parameters:
+        - in: query
+          name: from
+          required: false
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: to
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: A list of at most 10 events with the most revenue, sorted by revenue.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Bestseller'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /mobile/events/with-schedule-items:
+    get:
+      summary: Events with schedule items
+      description: All events with schedule items.
+      responses:
+        '200':
+          description: All events with schedule items.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SimpleEvent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /mobile/guests/{guestId}/delete:
+    post:
+      summary: Delete guest
+      description: Deletes the guest with the given ID.
+      parameters:
+        - in: path
+          name: guestId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: |
+            When the deletion is successful, this endpoint responds with the list of guests for the event the guest was
+            just deleted for.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Guest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/guests/{guestId}/update:
+    post:
+      summary: Update guest
+      description: |
+        Updates the guest with the given ID. This is only possible for guests that are linked to internal guest lists.
+      parameters:
+        - in: path
+          name: guestId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GuestRequest'
+      responses:
+        '200':
+          description: |
+            When updating is successful, this endpoint responds with the list of guests for the event of the updated
+            guest.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Guest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/guests/{guestId}/check-in:
+    post:
+      summary: Check-in guest
+      description: Register a guest as 'checked in' by completing their order and scanning their tickets.
+      parameters:
+        - in: path
+          name: guestId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: |
+            When checked-in successful this endpoint responds with the list of guests for the event the guest was
+            just checked in for.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Guest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/guests/events:
+    get:
+      summary: Events with guest tickets
+      description: |
+        A list of the upcoming events which have guest ticket groups. At most 25 events are shown. Note that these
+        events are never canceled.
+      responses:
+        '200':
+          description: A list of at most 25 events.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SimpleEvent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /mobile/itineraries:
+    get:
+      summary: All upcoming itineraries
+      description: |
+        All upcoming itineraries. This also includes itinerary collections.
+      parameters:
+        - in: query
+          name: nameQuery
+          description: Queries based on the event name, itinerary collection name or the program item name.
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: All upcoming itineraries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Itinerary'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /mobile/itineraries/events:
+    get:
+      summary: Events with itineraries
+      description: All upcoming events with published itineraries.
+      responses:
+        '200':
+          description: A list of upcoming events with published itineraries, containing a minimal set of info per event.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SimpleEvent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /mobile/contact/membership:
+    post:
+      summary: Membership by contact barcode
+      description: |
+        Memberships for a contact, identified by the contact's barcode, relevant to the active events and active ticket
+        groups as provided in the request. Note that only memberships that are considered free are shown. A membership
+        is considered free when the price is `0` and its web and door fee are both `0`, or the ticket type is of type
+        guest.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MembershipInfoRequest'
+      responses:
+        '200':
+          description: |
+            A list of all memberships the contact (identified by their barcode) has, relevant to the active events and
+            active ticket groups as provided in the request.
+            Per membership the relevant events end their ticket groups are provided.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MembershipInfoResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/tickets-by-contact:
+    get:
+      summary: Search for a contact's tickets by query
+      description: |
+        A list of orders for contacts that match the query. Every object contains basic contact information along with
+        the tickets of that order.
+      parameters:
+        - in: query
+          name: query
+          required: true
+          description: Queries based on the contact their name or email address.
+          schema:
+            type: string
+            minLength: 4
+        - in: query
+          name: activeEventIds
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The contacts found by the query, each with the tickets contact has bought.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ContactWithTickets'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /mobile/personnel/groups:
+    get:
+      deprecated: true
+      summary: Personnel groups
+      description: |
+        --
+
+        DEPRECATED SINCE 5.3.1. Use `/mobile/crew/teams` instead.
+
+        --
+
+        All personnel groups for the current organization.
+      responses:
+        '200':
+          description: All personnel groups for the current organization.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PersonnelGroup'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /mobile/crew/teams:
+    get:
+      summary: Teams
+      description: All teams for the current organization
+      responses:
+        '200':
+          description: All teams for the current organization
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Team'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+
+  /mobile/personnel/overview:
+    get:
+      deprecated: true
+      summary: Personnel's shifts for a particular date
+      description: |
+        --
+
+        DEPRECATED FROM VERSION 5.3.0. Use the new "Crew schedule" instead.
+
+        --
+
+        Personnel's shifts for a particular date, including the previous and next date with shifts.
+      parameters:
+        - in: query
+          name: date
+          required: false
+          description: Date in `yyyy-MM-dd` format. Defaults to today when omitted.
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Personnel's shifts for a particular date, including the previous and next date with shifts.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PersonnelShift'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /mobile/crew-schedule:
+    get:
+      summary: Crew schedule
+      description: All shifts for the given date, grouped by date and the event. Used by the planners to see all shifts.
+      parameters:
+        - in: query
+          name: date
+          required: false
+          description: Date in `yyyy-MM-dd` format. Defaults to today when omitted.
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: |
+            All shifts for the given date, grouped by date and event. It's still grouped by date, as the all data are
+            shifts that have and overlapping start and end for the current date. Meaning shifts could start a day before
+            the current date.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CrewSchedule'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+
+  /mobile/refunds/ticket-info:
+    get:
+      summary: Refund ticket info
+      description: |
+        Ticket information found by the barcode, along with refund options.
+      parameters:
+        - in: query
+          name: barcode
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Responds with ticket information and refund options.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketInfo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /mobile/refunds/request:
+    post:
+      summary: Request a refund for a ticket
+      description: If possible, this refunds a ticket based on it's barcode, possibly blocking it in the process.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketRefundRequest'
+      responses:
+        '200':
+          description: Indicates the refund was successful and provides a UI message.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - message
+                properties:
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/RefundImpossibleOrBadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/scan:
+    post:
+      summary: Scan a barcode
+      description: |
+        Scan a barcode if the barcode is known to us.
+        After scanning, the ticket that belongs to the barcode cannot be scanned again.
+
+        This endpoint can also be used to scan memberships for a contact.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketScanRequest'
+      responses:
+        '200':
+          description: When the scan was successful the response includes ticket information of the scanned ticket.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScannedTicket'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '405':
+          $ref: '#/components/responses/TicketScanError'
+        '418':
+          description: Sample ticket has been (successfully) scanned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - message
+                  - error
+                  - barcode
+                properties:
+                  message:
+                    type: string
+                  error:
+                    type: string
+                  barcode:
+                    type: string
+
+  /mobile/scan/manual:
+    post:
+      summary: Manually scan a ticket
+      description: Validate ticket manually, by `ticketId` instead of barcode.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManualScanRequest'
+      responses:
+        '200':
+          description: When the scan was successful the response includes ticket information of the scanned ticket.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScannedTicket'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /mobile/scan/membership:
+    post:
+      summary: Scan ticket in combination with a membership
+      description: |
+        Scan a barcode if the barcode is known to us.
+        After scanning the ticket that belongs the barcode cannot be scanned again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MembershipScanRequest'
+      responses:
+        '200':
+          description: When the scan was successful the response includes ticket information of the scanned ticket.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScannedTicket'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/TicketScanError'
+
+  /mobile/scan/report:
+    get:
+      summary: Scan reports for events
+      description: Scan reports for all events for which the `eventId` is provided.
+      parameters:
+        - in: query
+          name: eventIds
+          description: A string of event ids, separated by commas.
+          required: true
+          example: "1,2"
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of scan reports, one per event.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScanReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/schedule/for-date:
+    get:
+      summary: Schedule items for date
+      description: Schedule items for the given date, along with the previous and next date that has schedule items.
+      parameters:
+        - in: query
+          name: date
+          required: true
+          schema:
+            type: string
+            description: Date in `yyyy-MM-dd` format.
+            format: date
+      responses:
+        '200':
+          description: Schedule items for the given date, along with the previous and next date that has schedule items.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleOverview'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /mobile/schedule/for-event:
+    get:
+      summary: Schedule items for an event
+      description: All schedule items for the event with the given eventId.
+      parameters:
+        - in: query
+          name: eventId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Schedule items for the given date, along with some basic information related to the event.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventScheduleOverview'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/schedule/filters:
+    get:
+      summary: Schedule filters
+      description: The schedule filters as setup for the current organization.
+      responses:
+        '200':
+          description: |
+            Schedule filters of the current organization. Contains filters for spaces, labels, topics and customTopics.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleFilters'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /mobile/crew/profile: #Something that actually works! Returns json
+    get:
+      summary: Crew member profile information
+      description: All profile information for the currently logged in crew member
+      responses:
+        '200':
+          description: |
+            The profile information for the currently logged in crew member.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CrewMemberProfile'
+        '403':
+          $ref: '#/components/responses/CrewMemberForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/GatewayTimeout'
+
+  /mobile/crew/calendar-sync-url: #Also works! Returns json
+    get:
+      summary: Calendar sync URL
+      description: |
+        The URL that can be placed in a users' calendar which will be synchronize their shifts. This will get the token
+        from the crew member. If it doesn't exist, it will create the token and store it for the crew member.
+      responses:
+        '200':
+          description: Returns the URL for syncing the calendar.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarSyncUrlResponse'
+        '403':
+          $ref: '#/components/responses/CrewMemberForbidden'
+
+  /mobile/crew/profile/upload-picture: #Probably works? Should test
+    post:
+      summary: Upload profile picture
+      description: |
+        Uploads the given image to the account of the crew member. This requires the image to be properly scaled.
+
+        The file name should include the image type (e.g.: `.png`, `.jpg`). The actual name itself will be altered in
+        the endpoint to prevent duplicates of file names saved in S3. Omitting the file name still works, but may show
+        unexpected results.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: The image has been successfully uploaded. This returns the link to the profile picture
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadProfilePictureResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/CrewMemberForbidden'
+
+  /mobile/crew/shifts/overview: #Shows all open shifts and avalible shifts
+    get:
+      deprecated: true
+      summary: Shifts overview
+      description: |
+        --
+
+        DEPRECATED FROM VERSION 5.3.0. Use the separated "Open shifts" and "My shifts" endpoints instead.
+
+        --
+
+        The shifts overview is split up into "my shifts" and "open shifts". My shifts are the shifts that the crew
+        member is assigned to. These "my shifts" are shown un-grouped.
+
+        The "open shifts" are shifts that the crew member can request or claim. These shifts are grouped together if
+        they are considered the "same shift". A shift is the same if:
+        - Both shifts have the same `start` and `end` times,
+        - Both shifts are linked to the same event, or no event.
+        - Both shifts have the same role
+        - Both shifts have the same `planMode`.
+
+        All shifts are always grouped and ordered (ascending) by their starting date. The "open shifts" are also grouped
+        by its event, if and only if the shifts are continuous. Meaning, the order of shifts remains and is only grouped
+        when the order is kept. Note that shifts aren't always linked to an event, but these can still be grouped.
+      responses:
+        '200':
+          description: All assigned ("My shifts") and open shifts grouped by date.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftsOverview'
+        '403':
+          $ref: '#/components/responses/CrewMemberForbidden'
+
+  /mobile/crew/my-shifts:
+    get:
+      summary: My shifts
+      description: The shifts that the crew member is assigned to.
+      responses:
+        '200':
+          description: The list of shifts that the crew member is assigned to, grouped by date.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyShifts'
+        '403':
+          $ref: '#/components/responses/CrewMemberForbidden'
+
+  /mobile/crew/open-shifts:
+    get:
+      summary: Open shifts
+      description: |
+        The shifts that the crew member can request or claim. These are grouped together if they are considered the
+        "same shift". A shift is the same if:
+        - Both shifts have the same `start` and `end` times,
+        - Both shifts are linked to the same event, or no event.
+        - Both shifts have the same role
+        - Both shifts have the same `planMode`.
+      responses:
+        '200':
+          description: The list of shifts that the crew member can request or claim, grouped by date and then event.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenShifts'
+        '403':
+          $ref: '#/components/responses/CrewMemberForbidden'
+
+  /mobile/crew/shifts/colleagues:
+    get:
+      summary: Colleague's shifts
+      description: |
+        The shifts of the colleagues of the crew member. This is only visible to the crew member when they're allowed
+        to see the "Colleague" tab. If `crewMemberCanSeeColleagues` from the `/mobile/sign-in/account/current` endpoint
+        is `false` this endpoint shouldn't be called and will also return an error.
+      parameters:
+        - in: query
+          name: date
+          description: |
+            The date for which the colleague's shifts should be shown. Should be omitted when the page is loaded first,
+            as it's unknown which dates are possible. When omitted, the first upcoming shift will be the selected
+            `currentDate`.
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: |
+            All shifts for the given `date`. These do include the shifts that this crew member has themselves, but are
+            marked with `isOwnShift = true`.
+
+            The shifts are first grouped by event, if any. Then are grouped by the team. Shifts within each group are
+            sorted chronologically based on the start time of the shift.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ColleaguesShiftsByDate'
+        '403':
+          description: |
+            The logged in user is not a crew member or the crew member is not allowed to view colleague's shifts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForbiddenResponse'
+
+  /mobile/crew/shifts/update-availability:
+    post:
+      summary: Update availability
+      description: Updates the availability for the given date.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAvailabilityRequest'
+      responses:
+        '200':
+          description: The availability has been successfully updated.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/CrewMemberForbidden'
+
+  /mobile/crew/shifts/request:
+    post:
+      summary: Request a shift
+      description: Requests a shift.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShiftIds'
+      responses:
+        '200':
+          description: The shift has been successfully requested.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/CrewMemberForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/crew/shifts/unrequest:
+    post:
+      summary: Unrequest a shift
+      description: Unrequest a requested shift.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShiftIds'
+      responses:
+        '200':
+          description: The previously requested shift has been successfully unrequested.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/CrewMemberForbidden'
+
+  /mobile/crew/shifts/claim:
+    post:
+      summary: Claim a shift
+      description: |
+        Claims a shift.
+
+        Even though a list of shifts is given, only one shift will be claimed, if any. It will try to find the first
+        shift that is claimable for the given IDs. If only one ID would be given, there's a higher chance two crew
+        members try to claim the same shift at the same time, whilst there might be another shift that could be claimed
+        instead.
+
+        The shifts are first grouped by event, if any. Then are grouped by the team. Shifts within each group are
+        sorted chronologically based on the start time of the shift.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShiftIds'
+      responses:
+        '200':
+          description: The shift has been successfully claimed.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/CrewMemberForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/v2/crew/availability:
+    post:
+      summary: Create or update availability
+      description: |
+        Creates or updates the availability. It will merge the (un)availabilities overlapping with the given start and end.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAvailabilityRequestV2'
+      responses:
+        '200':
+          description: The availability has been successfully created or updated.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/CrewMemberForbidden'
+
+  /mobile/v2/crew/availability/{availabilityId}/delete:
+    post:
+      summary: Delete availability
+      description: Deletes the availability.
+      parameters:
+        - in: path
+          name: availabilityId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: The availability has been successfully created or updated.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/CrewMemberForbidden'
+
+  /mobile/v2/crew/shifts/claim:
+    post:
+      summary: Claim a shift
+      description: |
+        Claims a shift.
+
+        Even though a list of shifts is given, only one shift will be claimed, if any. It will try to find the first
+        shift that is claimable for the given IDs. If only one ID would be given, there's a higher chance two crew
+        members try to claim the same shift at the same time, whilst there might be another shift that could be claimed
+        instead.
+
+        The shifts are first grouped by event, if any. Then are grouped by the team. Shifts within each group are
+        sorted chronologically based on the start time of the shift.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShiftIds'
+      responses:
+        '200':
+          description: The shift has been successfully claimed.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/CrewMemberForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/v2/crew/overview:
+    get:
+      summary: Crew member calendar overview
+      description: |
+        Fetches the calendar overview for the current crew member. The overview contains scheduled shifts, requested
+        shifts and (un)availabilities of the crew member. The response is a list of datetime ranges and the type of the
+        range.
+      parameters:
+        - in: query
+          name: start
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: end
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: |
+            Returns the list of ranges and its types.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CrewMemberOverviewItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/CrewMemberForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /mobile/v2/crew/shifts/{shiftId}:
+    get:
+      summary: Crew member calendar overview
+      description: |
+        Fetches the details of the given shift. This shift can either be a confirmed one the has the current crew
+        member scheduled, or one that the current crew member has a ShiftRequest for.
+      parameters:
+        - in: path
+          name: shiftId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: |
+            Returns the shift details of the shift with the given id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyShift'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/CrewMemberForbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  schemas:
+    Version:
+      type: object
+      required:
+        - version
+      properties:
+        version:
+          type: string
+          example: "4.1.5"
+
+    CalendarFilter:
+      type: object
+      required:
+        - eventTypes
+        - locations
+        - spaces
+        - states
+        - projectLeads
+      properties:
+        eventTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/CalendarFilterEventType'
+        locations:
+          type: array
+          items:
+            $ref: '#/components/schemas/CalendarFilterLocation'
+        spaces:
+          type: array
+          items:
+            $ref: '#/components/schemas/CalendarFilterSpace'
+        states:
+          type: array
+          items:
+            $ref: '#/components/schemas/CalendarFilterStatus'
+        projectLeads:
+          type: array
+          items:
+            $ref: '#/components/schemas/CalendarFilterProjectLead'
+
+    CalendarFilterEventType:
+      type: object
+      required:
+        - eventTypeId
+        - name
+        - color
+      properties:
+        eventTypeId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        color:
+          type: string
+
+    CalendarFilterLocation:
+      type: object
+      required:
+        - locationId
+        - name
+      properties:
+        locationId:
+          type: integer
+          format: int64
+        name:
+          type: string
+
+    CalendarFilterSpace:
+      type: object
+      required:
+        - spaceId
+        - name
+      properties:
+        spaceId:
+          type: integer
+          format: int64
+        name:
+          type: string
+
+    CalendarFilterProjectLead:
+      type: object
+      required:
+        - projectLeadId
+        - name
+      properties:
+        projectLeadId:
+          type: integer
+          format: int64
+        name:
+          type: string
+
+    CalendarFilterStatus:
+      type: object
+      required:
+        - status
+        - label
+      properties:
+        status:
+          type: string
+        label:
+          type: string
+
+    EventWithName:
+      type: object
+      required:
+        - eventId
+        - name
+      properties:
+        eventId:
+          type: integer
+          format: int64
+        name:
+          type: string
+
+    CalendarEvent:
+      type: object
+      required:
+        - eventId
+        - name
+        - type
+        - shownAsMultipleDays
+        - status
+        - programStartAt
+        - programEndAt
+        - spaceIds
+      properties:
+        eventId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        'type':
+          $ref: '#/components/schemas/CalendarItemType'
+        shownAsMultipleDays:
+          type: boolean
+        status:
+          $ref: '#/components/schemas/EventStatus'
+        programStartAt:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        programEndAt:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        eventType:
+          type: string
+        color:
+          type: string
+        eventTypeId:
+          type: integer
+          format: int64
+        projectLeadId:
+          type: integer
+          format: int64
+          deprecated: true
+        projectLeadIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+        spaceIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+
+    CalendarNote:
+      type: object
+      required:
+        - calendarNoteId
+        - name
+        - shownAsMultipleDays
+        - noteType
+        - spaceIds
+      properties:
+        calendarNoteId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        startAt:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        endAt:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        shownAsMultipleDays:
+          type: boolean
+        noteType:
+          type: string
+        projectLeadId:
+          type: integer
+          format: int64
+          deprecated: true
+        projectLeadIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+        spaceIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+
+    CalendarMultiAccessEvent:
+      type: object
+      required:
+        - eventId
+        - name
+        - programStartAt
+        - programEndAt
+        - shownAsMultipleDays
+        - status
+        - eventType
+        - projectType
+        - subEvents
+      properties:
+        eventId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        programStartAt:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        programEndAt:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        shownAsMultipleDays:
+          type: boolean
+        location:
+          type: string
+        status:
+          type: string
+        eventType:
+          type: string
+        projectLead:
+          type: string
+          deprecated: true
+        projectLeads:
+          type: array
+          items:
+            type: string
+        projectType:
+          type: string
+        comment:
+          type: string
+        subEvents:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubEvent'
+
+    SubEvent:
+      type: object
+      required:
+        - eventId
+        - name
+        - capacity
+      properties:
+        eventId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        capacity:
+          type: integer
+
+    CalendarRegularEvent:
+      type: object
+      required:
+        - eventId
+        - name
+        - programStartAt
+        - programEndAt
+        - shownAsMultipleDays
+        - location
+        - status
+        - eventType
+        - projectType
+        - spaces
+      properties:
+        eventId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        productionStartAt:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        doorsOpenAt:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        programStartAt:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        programEndAt:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        productionEndAt:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        shownAsMultipleDays:
+          type: boolean
+        location:
+          type: string
+        status:
+          type: string
+        visitorsExpected:
+          type: integer
+          format: int64
+        projectLead:
+          type: string
+          deprecated: true
+        projectLeads:
+          type: array
+          items:
+            type: string
+        eventType:
+          type: string
+        projectType:
+          type: string
+        comment:
+          type: string
+        spaces:
+          type: array
+          items:
+            type: string
+        eventsOfSeries:
+          type: array
+          items:
+            $ref: '#/components/schemas/SeriesEvent'
+
+    SeriesEvent:
+      type: object
+      required:
+        - eventId
+        - name
+        - programStartAt
+        - programEndAt
+        - spaces
+      properties:
+        eventId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        productionStartAt:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        doorsOpenAt:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        programStartAt:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        programEndAt:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        spaces:
+          type: array
+          items:
+            type: string
+
+    CalendarNoteInfo:
+      type: object
+      required:
+        - noteId
+        - name
+        - startAt
+        - endAt
+        - noteType
+        - spaces
+      properties:
+        noteId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        startAt:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        endAt:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        noteType:
+          type: string
+        comment:
+          type: string
+        location:
+          type: string
+        projectLead:
+          type: string
+        spaces:
+          type: array
+          items:
+            type: string
+
+    EventStatus:
+      type: string
+      enum: [ 'OPTION', 'TO_BE_CONFIRMED', 'CONFIRMED', 'TO_BE_CANCELLED', 'CANCELLED' ]
+
+    CalendarItemType:
+      type: string
+      enum: [ 'EVENT', 'IN_SERIES', 'MULTI_ACCESS' ]
+
+    SimpleContact:
+      type: object
+      required:
+        - contactId
+        - name
+        - primaryEmailAddress
+        - additionalEmailAddresses
+        - additionalPhoneNumbers
+      properties:
+        contactId:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: Jane Doe
+        primaryEmailAddress:
+          type: string
+          example: janedoe@example.com
+        primaryPhoneNumber:
+          type: string
+          example: 12345678
+        additionalEmailAddresses:
+          description: Can be empty
+          type: array
+          items:
+            type: string
+        additionalPhoneNumbers:
+          description: Can be empty
+          type: array
+          items:
+            type: string
+
+    SimpleContactWithPhoto:
+      type: object
+      required:
+        - contactId
+        - name
+      properties:
+        contactId:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: Jane Doe
+        photo:
+          type: string
+          example: https://url.com/photo
+
+    DetailedContact:
+      type: object
+      required:
+        - contactId
+        - name
+        - primaryEmailAddress
+        - contactDetails
+        - emailAddresses
+        - phoneNumbers
+      properties:
+        contactId:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: Jane Doe
+        primaryEmailAddress:
+          type: string
+          example: janedoe@example.com
+        emailAddresses:
+          type: array
+          items:
+            type: string
+        phoneNumbers:
+          type: array
+          items:
+            type: string
+
+    TicketGroup:
+      type: object
+      required:
+        - ticketGroupId
+        - name
+      properties:
+        ticketGroupId:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: Regular
+
+    TicketGroupWithAvailability:
+      type: object
+      required:
+        - ticketGroupId
+        - name
+        - available
+      properties:
+        ticketGroupId:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: Regular
+        available:
+          type: integer
+          format: int32
+          example: 50
+
+    Guest:
+      type: object
+      required:
+        - guestId
+        - name
+        - inCount
+        - totalCount
+        - originalCount
+        - placeholder
+        - guestList
+        - isExpired
+        - locked
+      properties:
+        guestId:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: Hunter Schafer
+        inCount:
+          description: The amount of already scanned tickets for this guest.
+          type: integer
+          format: int32
+          example: 1
+        totalCount:
+          description: The total amount of non-blocked tickets for this guest.
+          type: integer
+          format: int32
+          example: 3
+        'description':
+          type: string
+        ticketGroupId:
+          type: integer
+          format: int64
+          example: 3
+        ticketTypeName:
+          type: string
+        external:
+          type: boolean
+        contactId:
+          type: integer
+          format: int64
+        isExpired:
+          type: boolean
+
+    GuestRequest:
+      type: object
+      required:
+        - name
+        - totalCount
+        - ticketGroupId
+      properties:
+        name:
+          type: string
+          example: Nemi El-Hassan
+        totalCount:
+          type: integer
+          format: int32
+          example: 10
+          minimum: 1
+        'description':
+          type: string
+          example: Journalists
+        contactId:
+          type: integer
+          format: int64
+          example: 1
+        ticketGroupId:
+          type: integer
+          format: int64
+          example: 1
+
+    AddGuestResponse:
+      type: object
+      required:
+        - guestId
+        - guests
+      properties:
+        guestId:
+          type: integer
+          format: int64
+          description: The id of the created guest.
+        guests:
+          type: array
+          items:
+            $ref: '#/components/schemas/Guest'
+
+    BatchAddGuestRequest:
+      type: object
+      required:
+        - ticketGroupId
+        - guests
+      properties:
+        ticketGroupId:
+          type: integer
+          format: int64
+        description:
+          type: string
+        guests:
+          type: array
+          items:
+            $ref: '#/components/schemas/AddGuestRequestGuest'
+
+    AddGuestRequestGuest:
+      type: object
+      required:
+        - name
+        - count
+      properties:
+        name:
+          type: string
+        count:
+          type: integer
+          format: int32
+
+    BatchAddGuestResponse:
+      type: object
+      required:
+        - addedCount
+        - guests
+      properties:
+        addedCount:
+          type: integer
+          format: int32
+          description: The amount of guests that were added.
+        guests:
+          type: array
+          items:
+            $ref: '#/components/schemas/Guest'
+
+    EventOverview:
+      type: object
+      required:
+        - eventId
+        - name
+        - start
+        - end
+        - report
+      properties:
+        eventId:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: Disco, funk and soul night
+        start:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        end:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        eventType:
+          type: string
+        ticketSold:
+          type: string
+        ticketsScanned:
+          type: string
+        ticketsReserved:
+          type: string
+        ticketsAvailable:
+          type: string
+
+    ScanInsight:
+      type: object
+      required:
+        - eventId
+        - eventName
+        - isCanceled
+        - eventStart
+        - period
+        - from
+        - to
+        - ticketsScanned
+        - ticketsSold
+        - totalTicketsReserved
+        - totalExpected
+        - ticketGroups
+        - data
+      properties:
+        eventId:
+          type: integer
+          format: int64
+          example: 1
+        eventName:
+          type: string
+          example: Disco, funk and soul night
+        from:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        to:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        firstScan:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        lastScan:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        ticketsScanned:
+          type: integer
+          format: int32
+        ticketsSold:
+          type: integer
+          format: int32
+        totalTicketsReserved:
+          type: integer
+          format: int32
+        totalExpected:
+          type: integer
+          format: int32
+          description: Number of sold but unscanned tickets
+        ticketGroups:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScanInsightTicketGroup'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScanInsightDataPoint'
+
+    ScanInsightTicketGroup:
+      type: object
+      required:
+        - ticketType
+        - ticketsScanned
+        - ticketsSold
+      properties:
+        ticketType:
+          type: string
+        ticketsScanned:
+          type: integer
+          format: int32
+        ticketsSold:
+          type: integer
+          format: int32
+        ticketsReserved:
+          type: integer
+          format: int32
+
+    ScanInsightDataPoint:
+      type: object
+      required:
+        - from
+        - to
+        - ticketsScannedTillNow
+        - ticketsScanned
+      properties:
+        from:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        to:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        ticketsScannedTillNow:
+          type: integer
+          format: int32
+        ticketsScanned:
+          type: integer
+          format: int32
+
+    EventSummary:
+      type: object
+      required:
+        - eventId
+        - name
+        - isSoldOut
+        - isCanceled
+      properties:
+        eventId:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          description: Used to be name_clean
+          example: Disco, funk and soul night
+        start:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        end:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        firstSale:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        lastSale:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        firstScan:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        lastScan:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        isSoldOut:
+          type: boolean
+        isCanceled:
+          type: boolean
+
+    EventWithTicketGroups:
+      type: object
+      required:
+        - eventId
+        - name
+        - start
+        - end
+        - ticketGroups
+      properties:
+        eventId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        start:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        end:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        ticketGroups:
+          type: array
+          items:
+            $ref: '#/components/schemas/TicketGroup'
+
+    SimpleEvent:
+      type: object
+      required:
+        - eventId
+        - name
+        - start
+        - end
+        - isCanceled
+      properties:
+        eventId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        start:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        end:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        isCanceled:
+          type: boolean
+
+    EventSalesPerDayForEvent:
+      type: object
+      required:
+        - eventId
+        - eventName
+        - periodOverview
+        - specifications
+      properties:
+        eventId:
+          type: integer
+          format: int64
+        eventName:
+          type: string
+        periodOverview:
+          $ref: '#/components/schemas/PeriodOverview'
+        specifications:
+          type: array
+          items:
+            $ref: '#/components/schemas/SalesSpecificationEvent'
+
+    EventSalesPerDayForTicketType:
+      type: object
+      required:
+        - eventId
+        - eventName
+        - periodOverview
+        - specifications
+      properties:
+        eventId:
+          type: integer
+          format: int64
+        eventName:
+          type: string
+        periodOverview:
+          $ref: '#/components/schemas/PeriodOverview'
+        specifications:
+          type: array
+          items:
+            $ref: '#/components/schemas/SalesSpecificationTicketType'
+
+    EventSalesPerDayForRange:
+      type: object
+      required:
+        - periodOverview
+        - specifications
+      properties:
+        periodOverview:
+          $ref: '#/components/schemas/PeriodOverview'
+        specifications:
+          type: array
+          items:
+            $ref: '#/components/schemas/SalesSpecificationRange'
+
+    PeriodOverview:
+      type: object
+      required:
+        - from
+        - to
+        - revenue
+        - paidTickets
+        - freeTickets
+      properties:
+        from:
+          type: string
+          format: date
+        to:
+          type: string
+          format: date
+        revenue:
+          type: integer
+          format: int32
+        paidTickets:
+          type: integer
+          format: int32
+        freeTickets:
+          type: integer
+          format: int32
+
+    Bestseller:
+      type: object
+      required:
+        - event
+        - periodOverview
+      properties:
+        event:
+          $ref: '#/components/schemas/EventSummary'
+        periodOverview:
+          $ref: '#/components/schemas/PeriodOverview'
+
+    BasicSalesDetails:
+      type: object
+      required:
+        - date
+        - paidTickets
+        - freeTickets
+        - revenue
+      properties:
+        date:
+          type: string
+          format: date
+        paidTickets:
+          type: integer
+          format: int64
+        freeTickets:
+          type: integer
+          format: int64
+        revenue:
+          type: integer
+          format: int64
+
+    SalesSpecificationEvent:
+      type: object
+      required:
+        - date
+        - revenue
+        - paidTickets
+        - freeTickets
+        - revenueToDate
+        - paidTicketsToDate
+        - freeTicketsToDate
+      properties:
+        date:
+          type: string
+          format: date
+        revenue:
+          type: integer
+          format: int32
+        paidTickets:
+          type: integer
+          format: int32
+        freeTickets:
+          type: integer
+          format: int32
+        revenueToDate:
+          type: integer
+          format: int32
+        paidTicketsToDate:
+          type: integer
+          format: int32
+        freeTicketsToDate:
+          type: integer
+          format: int32
+
+    SalesSpecificationTicketType:
+      type: object
+      required:
+        - ticketType
+        - revenue
+        - paidTickets
+        - freeTickets
+      properties:
+        ticketType:
+          type: string
+        revenue:
+          type: integer
+          format: int32
+        paidTickets:
+          type: integer
+          format: int32
+        freeTickets:
+          type: integer
+          format: int32
+
+    SalesSpecificationRange:
+      type: object
+      required:
+        - date
+        - revenue
+        - paidTickets
+        - freeTickets
+      properties:
+        date:
+          type: string
+          format: date
+        revenue:
+          type: integer
+          format: int32
+        paidTickets:
+          type: integer
+          format: int32
+        freeTickets:
+          type: integer
+          format: int32
+
+    Itinerary:
+      type: object
+      required:
+        - name
+        - programItems
+        - url
+      properties:
+        name:
+          description: The name of this itinerary
+          type: string
+        programItems:
+          description: The list of program items that belong to this itinerary
+          type: array
+          items:
+            $ref: '#/components/schemas/EventProgramItem'
+        url:
+          description: The URL of this published itinerary
+          type: string
+        eventName:
+          description: |
+            The name of the event that this itinerary is linked to. `null` if this is an itinerary collection.
+          type: string
+
+    EventItinerary:
+      type: object
+      required:
+        - programItem
+        - url
+      properties:
+        programItem:
+          $ref: '#/components/schemas/EventProgramItem'
+        url:
+          type: string
+
+    EventProgramItem:
+      type: object
+      required:
+        - programItemId
+        - name
+      properties:
+        programItemId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        start:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        end:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        space:
+          type: string
+
+    MembershipInfoRequest:
+      type: object
+      required:
+        - contactBarcode
+        - activeTicketGroupIds
+      properties:
+        contactBarcode:
+          type: string
+        activeTicketGroupIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+        activeEventIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+
+    MembershipInfoResponse:
+      type: object
+      required:
+        - contactId
+        - name
+        - contactBarcode
+        - events
+      properties:
+        contactId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        contactBarcode:
+          type: string
+        photoUrl:
+          type: string
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/MembershipInfoEvent'
+
+    MembershipInfoEvent:
+      type: object
+      required:
+        - eventId
+        - name
+        - start
+        - end
+        - memberships
+      properties:
+        eventId:
+          type: integer
+          format: int64
+        name:
+          description: Used to be `name_clean`.
+          type: string
+        start:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        memberships:
+          type: array
+          items:
+            $ref: '#/components/schemas/MembershipInfoTicketGroup'
+
+    MembershipInfoTicketGroup:
+      type: object
+      required:
+        - membershipId
+        - ticketGroupName
+        - ticketGroupId
+        - checkInPossible
+      properties:
+        membershipId:
+          type: integer
+          format: int64
+        ticketGroupName:
+          type: string
+        ticketGroupId:
+          type: integer
+          format: int64
+        checkInPossible:
+          type: boolean
+        ticketsAvailable:
+          type: integer
+          format: int32
+        ticketLimit:
+          type: integer
+          format: int32
+
+    ContactWithTickets:
+      type: object
+      required:
+        - contactId
+        - name
+        - tickets
+      properties:
+        contactId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        email:
+          type: string
+        tickets:
+          type: array
+          items:
+            $ref: '#/components/schemas/TicketForContact'
+
+    TicketForContact:
+      type: object
+      required:
+        - ticketId
+        - barcode
+        - ticketGroup
+        - scanned
+        - blocked
+        - status
+        - event
+      properties:
+        ticketId:
+          type: integer
+          format: int64
+        barcode:
+          type: string
+        ticketGroup:
+          $ref: '#/components/schemas/TicketGroupForContact'
+        scanned:
+          type: boolean
+        scannedOn:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        blocked:
+          type: boolean
+        status:
+          $ref: '#/components/schemas/TicketStatus'
+        event:
+          $ref: '#/components/schemas/EventForContact'
+
+    TicketGroupForContact:
+      type: object
+      required:
+        - name
+      properties:
+        ticketGroupId:
+          description: The ticket group id or `null` if the ticket was imported.
+          type: integer
+          format: int64
+        name:
+          type: string
+
+    EventForContact:
+      type: object
+      required:
+        - eventId
+        - name
+        - date
+      properties:
+        eventId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        date:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+
+    PersonnelGroup:
+      type: object
+      required:
+        - roleGroupId
+        - name
+        - color
+      properties:
+        roleGroupId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        color:
+          type: string
+
+    Team:
+      type: object
+      required:
+        - teamId
+        - name
+        - color
+      properties:
+        teamId:
+          description: The team's ID
+          type: integer
+          format: int64
+        name:
+          description: The name of the team
+          type: string
+        color:
+          description: The color that this team uses
+          type: string
+
+    TicketInfo:
+      type: object
+      required:
+        - barcode
+        - personal
+        - type
+        - event
+        - refundOptions
+      properties:
+        barcode:
+          type: string
+        personal:
+          type: boolean
+        type:
+          type: string
+        contact:
+          $ref: '#/components/schemas/TicketInfoDetails'
+        event:
+          $ref: '#/components/schemas/TicketInfoDetails'
+        refundOptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/RefundOption'
+
+    TicketInfoDetails:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+
+    RefundOption:
+      type: object
+      required:
+        - label
+        - action
+        - rows
+      properties:
+        label:
+          type: string
+        action:
+          type: string
+          enum: [ 'INCLUDE_SERVICE_FEE', 'EXCLUDE_SERVICE_FEE' ]
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/RefundRow'
+
+    RefundRow:
+      type: object
+      required:
+        - label
+        - value
+      properties:
+        label:
+          type: string
+        value:
+          type: string
+
+    RefundImpossibleReason:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+
+    TicketRefundRequest:
+      type: object
+      required:
+        - barcode
+        - block
+        - action
+      properties:
+        barcode:
+          type: string
+        block:
+          type: boolean
+        action:
+          type: string
+          enum: [ 'INCLUDE_SERVICE_FEE', 'EXCLUDE_SERVICE_FEE' ]
+
+    PersonnelShift:
+      description: This is the deprecated version
+      type: object
+      required:
+        - groupName
+        - color
+        - status
+        - start
+        - end
+        - roleName
+      properties:
+        groupName:
+          type: string
+        color:
+          type: string
+        status:
+          type: string
+          enum: [ 'OPEN', 'ASSIGNED' ]
+        start:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        end:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        roleName:
+          type: string
+        contact:
+          $ref: '#/components/schemas/PersonnelContact'
+
+    PersonnelContact:
+      description: This is the deprecated version
+      type: object
+      required:
+        - name
+        - email
+      properties:
+        name:
+          type: string
+        phoneNumber:
+          type: string
+        email:
+          type: string
+
+    CrewSchedule:
+      type: object
+      properties:
+        shiftsByDate:
+          type: array
+          items:
+            $ref: '#/components/schemas/CrewShiftsByDate'
+
+    CrewShiftsByDate:
+      type: object
+      properties:
+        date:
+          description: The date of these shifts, based on the start of the shift.
+          type: string
+          format: date
+        shiftsByEvent:
+          type: array
+          items:
+            $ref: '#/components/schemas/CrewShiftsByEvent'
+
+    CrewShiftsByEvent:
+      type: object
+      properties:
+        eventName:
+          description: |
+            The name of the event that these shifts belong to, `null` if the shifts are not linked to an event.
+          type: string
+        shifts:
+          description: The actual shifts for this event, if any.
+          type: array
+          items:
+            $ref: '#/components/schemas/CrewShift'
+
+    CrewShift:
+      type: object
+      properties:
+        teamName:
+          description: The name of the team this shift is linked to
+          type: string
+        color:
+          description: The color of the team this shift is linked to
+          type: string
+        roleName:
+          description: The name of the role this shift is linked to
+          type: string
+        start:
+          description: The date-time marking the start of the shift
+          type: string
+          format: date-time
+        end:
+          description: The date-time marking the end of the shift
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [ 'OPEN', 'ASSIGNED' ]
+        crewMember:
+          description: The crew member that is assigned to this shift. If `null`, then this shift is `OPEN`.
+          $ref: '#/components/schemas/CrewMember'
+
+    CrewMember:
+      type: object
+      properties:
+        name:
+          description: The full name of the crew member
+          type: string
+        email:
+          description: The email address of the crew member
+          type: string
+        phoneNumber:
+          description: The phone number of the crew member
+          type: string
+
+
+    TicketScanRequest:
+      type: object
+      required:
+        - barcode
+        - activeTicketGroupIds
+        - activeEventIds
+      properties:
+        barcode:
+          type: string
+        activeTicketGroupIds:
+          description: Can be empty. Should be empty when scanning a membership.
+          type: array
+          items:
+            type: integer
+            format: int64
+        activeEventIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+
+    ScannedTicket:
+      type: object
+      required:
+        - barcode
+        - status
+        - message
+        - personal
+        - type
+        - event
+        - isPersonalized
+      properties:
+        barcode:
+          type: string
+        status:
+          $ref: '#/components/schemas/TicketStatus'
+        message:
+          type: string
+        personal:
+          type: boolean
+        'type':
+          type: string
+        event:
+          $ref: '#/components/schemas/EventWithName'
+        contact:
+          $ref: '#/components/schemas/SimpleContactWithPhoto'
+        isPersonalized:
+          type: boolean
+          description: Whether this ticket has been personalized. This differs from the `personal` field.
+
+    ManualScanRequest:
+      type: object
+      required:
+        - ticketId
+        - activeTicketGroupIds
+        - activeEventIds
+      properties:
+        ticketId:
+          type: integer
+          format: int64
+        activeTicketGroupIds:
+          description: Can be empty.
+          type: array
+          items:
+            type: integer
+            format: int64
+        activeEventIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+
+    MembershipScanRequest:
+      type: object
+      required:
+        - membershipId
+        - activeTicketGroupIds
+        - ticketGroupId
+      properties:
+        membershipId:
+          type: integer
+          format: int64
+        ticketGroupId:
+          type: integer
+          format: int64
+        activeTicketGroupIds:
+          description: Can be empty.
+          type: array
+          items:
+            type: integer
+            format: int64
+
+    ScanReport:
+      type: object
+      required:
+        - eventId
+        - name
+        - scanned
+        - sold
+      properties:
+        eventId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        scanned:
+          type: integer
+          format: int32
+
+    ScheduleOverview:
+      type: object
+      required:
+        - previous
+        - next
+        - scheduleItems
+      properties:
+        previous:
+          type: string
+          format: date
+        next:
+          type: string
+          format: date
+        scheduleItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleItem'
+
+    ScheduleItem:
+      type: object
+      required:
+        - scheduleItemId
+        - activity
+        - start
+        - programItems
+        - spaces
+        - users
+        - topics
+        - labels
+        - files
+      properties:
+        scheduleItemId:
+          type: integer
+          format: int64
+        eventName:
+          type: string
+        activity:
+          type: string
+        start:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        end:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        notes:
+          type: string
+        spaces:
+          type: array
+          items:
+            type: string
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleUser'
+        topics:
+          type: array
+          items:
+            type: string
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleLabel'
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleFile'
+        programItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleProgramItem'
+
+    ScheduleUser:
+      type: object
+      required:
+        - userId
+        - name
+      properties:
+        userId:
+          type: integer
+          format: int64
+        name:
+          type: string
+
+    ScheduleLabel:
+      type: object
+      required:
+        - name
+        - hexColor
+      properties:
+        name:
+          type: string
+        hexColor:
+          type: string
+
+    ScheduleFile:
+      type: object
+      required:
+        - attachmentReferenceId
+        - fileName
+        - url
+      properties:
+        attachmentReferenceId:
+          type: integer
+          format: int64
+        fileName:
+          type: string
+        url:
+          type: string
+
+    ScheduleProgramItem:
+      type: object
+      required:
+        - programItemId
+        - name
+      properties:
+        programItemId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        start:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        end:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        space:
+          type: string
+        itineraryUrl:
+          type: string
+
+    EventScheduleOverview:
+      type: object
+      required:
+        - event
+        - scheduleItems
+      properties:
+        event:
+          $ref: '#/components/schemas/EventScheduleOverviewEvent'
+        scheduleItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleItem'
+
+    EventScheduleOverviewEvent:
+      type: object
+      required:
+        - eventId
+        - name
+        - programStart
+        - programEnd
+        - location
+      properties:
+        eventId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        doorsOpen:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        programStart:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        programEnd:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        location:
+          type: string
+
+    ScheduleFilters:
+      type: object
+      required:
+        - spaces
+        - labels
+        - topics
+        - customTopics
+      properties:
+        spaces:
+          type: array
+          items:
+            type: string
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleLabel'
+        topics:
+          type: array
+          items:
+            type: string
+        customTopics:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomTopic'
+
+    CustomTopic:
+      type: object
+      required:
+        - name
+        - label
+        - icon
+      properties:
+        name:
+          type: string
+        label:
+          type: string
+        icon:
+          type: string
+          description: |
+            Can be any of the following: `bullhorn`, `tshirt`, `file-contract`, `smile`, `exclamation-circle`.
+
+    CurrentUser:
+      type: object
+      required:
+        - name
+        - email
+        - permissions
+        - intercomAndroidUserHash
+        - intercomIosUserHash
+      properties:
+        userId:
+          type: integer
+          format: int64
+        crewMemberId:
+          type: integer
+          format: int64
+        crewMemberCanSeeColleagues:
+          description: |
+            Whether this crew member can see the shifts of their other colleagues. If this is `true`, then the
+            "colleagues" tab should be visible for this crew member. Will be `false` whenever `crewMemberId` is `null`.
+          type: boolean
+        crewMemberAvailabilityType:
+          type: string
+          enum: [ ALWAYS_AVAILABLE, SETS_AVAILABILITY, SETS_UNAVAILABILITY ]
+        name:
+          type: string
+        email:
+          type: string
+        permissions:
+          description: New permissions
+          type: array
+          items:
+            type: string
+            enum: [
+              VIEW_REPORTS_SCAN_INSIGHTS,
+              VIEW_GUEST_LISTS,
+              VIEW_REPORTS_TICKET_SALES_EVENT,
+              VIEW_REPORTS_TICKET_SALES_OVERVIEW,
+              VIEW_CONTACTS_AND_AUDIENCES,
+              VIEW_EVENTS_SCHEDULE_TAB,
+              VIEW_SCHEDULE_AND_TIMELINE,
+              VIEW_EVENTS_PROGRAM_TAB,
+              VIEW_PERSONNEL_CALENDAR,
+              VIEW_TICKET_MANAGEMENT,
+              SCAN_TICKETS,
+              SCAN_TICKETS_BY_NAME_IN_MOBILE_APP,
+              UNSCAN_TICKETS,
+              REFUND_TICKETS,
+              CHECK_IN_GUESTS,
+              MANAGE_GUEST_LISTS,
+              MANAGE_CONTACTS,
+              MANAGE_SCHEDULE,
+              MANAGE_PROGRAMS,
+              MANAGE_PERSONNEL_CALENDAR,
+              VIEW_SETTINGS_TICKETING_SCAN_DEVICES_TAB
+            ]
+        intercomAndroidUserHash:
+          type: string
+        intercomIosUserHash:
+          type: string
+        lastLogin:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+
+    SignInScanDeviceRequest:
+      type: object
+      required:
+        - deviceName
+        - deviceId
+        - scanDeviceRegisterCode
+      properties:
+        deviceName:
+          type: string
+        deviceId:
+          type: string
+        scanDeviceRegisterCode:
+          type: string
+
+    SignInRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          example: "test@example.com"
+        password:
+          type: string
+          format: password
+          example: "testtest"
+
+    JwtToken:
+      type: object
+      description: Bearer token that is used to encapsulate organization and user IDs.
+      required:
+        - sessionToken
+      properties:
+        sessionToken:
+          type: string
+
+    TicketStatus:
+      enum: [ 'AVAILABLE', 'RESERVED', 'SOLD', 'REFUNDED', 'IMPORTED', 'SWAPPED' ]
+
+    BadRequestResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+      example:
+        - message: "Request malformed"
+
+    ForbiddenResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+      example:
+        - message: "No required permissions"
+
+    NotFoundResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+      example:
+        - message: "No reservation found"
+
+    GatewayTimeoutResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+      example:
+        - message: "The server temporarily is unable to upload the file."
+
+    TicketScanErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          enum: [
+            'UNKNOWN_BARCODE',
+            'WRONG_EVENT',
+            'WRONG_TICKET_GROUP',
+            'BLOCKED',
+            'ALREADY_SCANNED',
+            'TICKET_NOT_YET_SCANNABLE',
+            'TICKET_NOT_SCANNABLE_ANYMORE',
+            'SCAN_ERROR',
+            'NOT_SOLD',
+            'CONTACT_BARCODE',
+            'MULTIPLE_MEMBERSHIPS_CAN_BE_USED'
+          ]
+        message:
+          type: string
+
+    CrewMemberProfile:
+      type: object
+      required:
+        - fullName
+        - roles
+        - emailAddress
+        - preferences
+      properties:
+        fullName:
+          type: string
+          example: Jane Doe
+        roles:
+          type: array
+          example: [ "Bar", "Ticket scanner" ]
+          items:
+            type: string
+        profilePicture:
+          type: string
+          description: The link to the profile picture
+        displayName:
+          type: string
+          example: "Jane"
+        emailAddress:
+          type: string
+          example: "janedoe@example.com"
+        phoneNumber:
+          type: string
+          example: "06-12345678"
+        address:
+          type: string
+          example: "Zomerhofstraat 82"
+        postalCode:
+          type: string
+          example: "3032 CM"
+        city:
+          type: string
+          example: "Rotterdam"
+        country:
+          type: string
+          example: "Netherlands"
+        birthDate:
+          type: string
+          format: date
+          example: 2025-02-14
+        preferences:
+          type: array
+          description: All preferences that the crew member has filled in
+          items:
+            $ref: '#/components/schemas/CrewMemberPreference'
+        contract:
+          description: If the contract is not `null`, there's at least one field that has been filled in.
+          $ref: '#/components/schemas/CrewMemberContract'
+
+    CrewMemberPreference:
+      type: object
+      required:
+        - name
+        - value
+      properties:
+        name:
+          type: string
+          example: "T-shirt size"
+        value:
+          type: string
+          example: "M"
+
+    CrewMemberContract:
+      type: object
+      properties:
+        startDate:
+          type: string
+          format: date
+          example: 2025-02-14
+        endDate:
+          type: string
+          format: date
+          example: 2025-02-14
+        contractType:
+          type: string
+          enum: [
+            HOURS_PER_WEEK,
+            HOURS_PER_MONTH,
+            SHIFTS_PER_WEEK,
+            SHIFTS_PER_MONTH,
+            SHIFTS_PER_YEAR
+          ]
+        hoursOrShiftsPerPeriod:
+          type: integer
+          format: int32
+        iban:
+          type: string
+        cocNumber:
+          type: string
+        vatNumber:
+          type: string
+
+    ShiftsOverview:
+      type: object
+      required:
+        - myShiftsByDate
+        - openShiftsByDate
+      properties:
+        myShiftsByDate:
+          description: The shifts assigned to the crew member, grouped by date.
+          type: array
+          items:
+            $ref: '#/components/schemas/MyShiftsByDate'
+        openShiftsByDate:
+          description: |
+            The shifts that are claimable/requestable by the crew member, grouped by date and event. For each date is
+            included whether the crew member is available for that day.
+          type: array
+          items:
+            $ref: '#/components/schemas/OpenShiftsByDate'
+
+    OpenShifts:
+      type: object
+      properties:
+        openShiftsByDate:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpenShiftsByDate'
+
+    MyShifts:
+      type: object
+      properties:
+        myShiftsByDate:
+          type: array
+          items:
+            $ref: '#/components/schemas/MyShiftsGroupedByDate'
+
+    MyShiftsByDate:
+      type: object
+      description: This is the deprecated version
+      properties:
+        date:
+          type: string
+          format: date
+          example: 2025-02-14
+        myShifts:
+          type: array
+          items:
+            $ref: '#/components/schemas/MyShift'
+
+    MyShiftsGroupedByDate:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+          example: 2025-02-14
+        groups:
+          description: The shifts that are grouped by event, if any.
+          type: array
+          items:
+            $ref: '#/components/schemas/MyShiftGroup'
+
+    OpenShiftsByDate:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+          example: 2025-02-14
+        isAvailable:
+          type: boolean
+          example: false
+          description: |
+            Whether the crew member has set their availability for this date. If `true`, the shifts in this date are
+            claimable or requestable (unless already requested).
+        groups:
+          description: The shifts that are grouped by event, if any.
+          type: array
+          items:
+            $ref: '#/components/schemas/ShiftGroup'
+
+    ColleaguesShiftsByDate:
+      type: object
+      required:
+        - groupsByEvent
+      properties:
+        currentDate:
+          description: |
+            The current date of the colleague's shifts. Is `null` when the given `date` is `null` and there are no
+            shifts found in the future for this crew member.
+          type: string
+          format: date
+        previousDate:
+          description: |
+            The previous date that this crew member has a shift on. `null` if there are no shifts before `currentDate`.
+          type: string
+          format: date
+        nextDate:
+          description: |
+            The next date that this crew member has a shift on. `null` if there are no shifts after the `currentDate`.
+          type: string
+          format: date
+        groupsByEvent:
+          description: The shifts, grouped by events.
+          type: array
+          items:
+            $ref: '#/components/schemas/ColleaguesShiftsByEvent'
+
+    BaseShift:
+      type: object
+      required:
+        - start
+        - end
+        - role
+        - teamName
+        - spaces
+      properties:
+        start:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        end:
+          type: string
+          format: date-time
+          example: 2025-02-14T10:15:30+01:00
+        role:
+          type: string
+          example: Ticket scanner
+        eventName:
+          type: string
+          example: Stager Swift
+        teamName:
+          type: string
+          example: Production
+        spaces:
+          description: |
+            Can be an empty list, espacially for shift created with the old crew schedule. For now, a shift can only
+            have one space linked.
+          type: array
+          items:
+            type: string
+          example: [ "Main hall" ]
+        location:
+          type: string
+          example: Stager HQ
+
+    MyShift:
+      allOf:
+        - $ref: '#/components/schemas/BaseShift'
+        - type: object
+          required:
+            - shiftId
+          properties:
+            shiftId:
+              type: integer
+              format: int64
+              example: 1
+
+    OpenShift:
+      allOf:
+        - $ref: '#/components/schemas/BaseShift'
+        - type: object
+          required:
+            - shiftIds
+            - planMode
+            - isRequested
+          properties:
+            shiftIds:
+              type: array
+              items:
+                type: integer
+                format: int64
+              example: [ 1, 2 ]
+            planMode:
+              $ref: '#/components/schemas/PlanMode'
+            isRequested:
+              type: boolean
+              description: |
+                `true` if `planMode` is `REQUEST` and the crew member has requested this shift.
+
+    ColleagueShift:
+      type: object
+      required:
+        - role
+        - start
+        - end
+        - isOwnShift
+      properties:
+        isOwnShift:
+          description: |
+            Whether this shift is owned by the crew member themselves. Should be displayed differently from the shifts.
+          type: boolean
+        crewMemberName:
+          description: The name of the crew member which has this shift.
+          type: string
+          example: "John Doe"
+        role:
+          description: The role of this shift.
+          type: string
+          example: "Cleaner"
+        profilePicture:
+          description: The URL to the profile picture of the crew member
+          type: string
+          example: "https://domain-to-picture/the-picture.png"
+        start:
+          description: The start of the shift.
+          type: string
+          format: date-time
+        end:
+          description: The end of the shift.
+          type: string
+          format: date-time
+
+    MyShiftGroup:
+      type: object
+      required:
+        - shifts
+      properties:
+        eventName:
+          type: string
+          example: "Stager Swift"
+        shifts:
+          type: array
+          items:
+            $ref: '#/components/schemas/MyShift'
+
+    ShiftGroup:
+      type: object
+      required:
+        - shifts
+      properties:
+        eventName:
+          type: string
+          example: "Stager Swift"
+        shifts:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpenShift'
+
+    ColleaguesShiftsByEvent:
+      type: object
+      required:
+        - shiftsByTeam
+      properties:
+        eventName:
+          type: string
+        shiftsByTeam:
+          description: The shifts, grouped by its team.
+          type: array
+          items:
+            $ref: '#/components/schemas/ColleaguesShiftsByTeam'
+
+    ColleaguesShiftsByTeam:
+      type: object
+      required:
+        - team
+        - shifts
+      properties:
+        team:
+          type: string
+          example: "Cleaning team"
+        shifts:
+          description: The actual shifts that belong to this team and the event.
+          type: array
+          items:
+            $ref: '#/components/schemas/ColleagueShift'
+
+    PlanMode:
+      type: string
+      enum: [ "CLAIM", "REQUEST" ]
+
+    UpdateAvailabilityRequest:
+      type: object
+      required:
+        - date
+        - type
+      properties:
+        date:
+          type: string
+          format: date
+          example: 2025-02-14
+        type:
+          description: Whether to set the availability to `available` or `unavailable` for this date.
+          type: string
+          enum: [ "AVAILABLE", "UNAVAILABLE" ]
+
+    UpdateAvailabilityRequestV2:
+      type: object
+      required:
+        - start
+        - end
+        - type
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Not required. If provided, it will update the existing (un)availability, else create a new one.
+        start:
+          type: string
+          format: date-time
+          example: 2025-02-14 20:00:00
+        end:
+          type: string
+          format: date-time
+          example: 2025-02-14 20:00:00
+        type:
+          description: Whether to set the availability to `available` or `unavailable` for this date.
+          type: string
+          enum: [ "AVAILABLE", "UNAVAILABLE" ]
+
+    CrewMemberOverviewItem:
+      type: object
+      required:
+        - id
+        - start
+        - end
+        - type
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        type:
+          type: string
+          enum: [ "SCHEDULED_SHIFT", "REQUESTED_SHIFT", "AVAILABILITY", "UNAVAILABILITY" ]
+
+    ShiftIds:
+      type: object
+      required:
+        - shiftIds
+      properties:
+        shiftIds:
+          description: |
+            The IDs of the shifts that are in the same group. These are already given as a list, that can be used here.
+          type: array
+          items:
+            type: integer
+            format: int64
+
+    UploadProfilePictureResponse:
+      type: object
+      properties:
+        profilePicture:
+          type: string
+          description: The link to the profile picture
+
+    CalendarSyncUrlResponse:
+      type: object
+      required:
+        - calendarSyncUrl
+      properties:
+        calendarSyncUrl:
+          type: string
+          example: https://stager.stager.co/mobile/crew/calendar.ics?token=<token>
+
+  responses:
+    BadRequest:
+      description: |
+        Request could not be processed by server. Request body contains malformed or incomplete data.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/BadRequestResponse'
+
+    Forbidden:
+      description: The user or scan device does not have the correct permissions.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ForbiddenResponse'
+
+    CrewMemberForbidden:
+      description: The logged in user is not a crew member
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ForbiddenResponse'
+
+    NotFound:
+      description: Responds with a 404 status code when a required object could not be found with the given parameters.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/NotFoundResponse'
+
+    GatewayTimeout:
+      description: The server temporarily is unable to upload the file.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GatewayTimeoutResponse'
+
+    RefundImpossibleOrBadRequest:
+      description: Either a regular BadRequest response or the reason why the ticket could not be refunded.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/BadRequestResponse'
+              - $ref: '#/components/schemas/RefundImpossibleReason'
+
+    TicketScanError:
+      description: Scanning the barcode not allowed. The reason why is specified
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/TicketScanErrorResponse'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+

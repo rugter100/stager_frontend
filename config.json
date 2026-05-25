@@ -1,0 +1,44 @@
+{
+  "gui": {
+    "theme": "dark",
+    "language": "EN_Int",
+    "function_order": [
+      "Productieleider",
+      "FOH grote zaal",
+      "Licht grote zaal",
+      "FOH Arena",
+      "Licht Arena",
+      "FOH Cafe",
+      "Stagehand / ATM",
+      "Medewerker Nacht - Bar",
+      "Bar"
+    ]
+  },
+  "webinterface_backend": {
+    "external_address": "http://localhost",
+    "stager_subdomain": "neushoorn",
+    "behind_proxy": false,
+    "bind_ip": "0.0.0.0",
+    "bind_port": 5000,
+    "login": {
+      "simple_mode": true,
+      "username": "test",
+      "password": "1234"
+    }
+  },
+  "presetup": {
+    "company_name": "Vamting Dev",
+    "company_url": "https://vamting.com",
+    "company_id": "VAMT_DEV",
+    "ntfy": {
+      "domain": "https://ntfy.vmti.link",
+      "topic": "testchannel"
+    }
+  },
+  "dev_options": {
+    "debug": true,
+    "devmode": false,
+    "wipe_logs": true,
+    "ui_test": false
+  }
+}

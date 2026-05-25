@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="{{ config.gui.theme }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ config.presetup.company_name }}{% endblock %}</title>
+    <link rel="icon" href="{{ url_for('static', filename='media/favicon.ico') }}" type="image/x-icon">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/bootstrap.css') }}">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+        .wrapper {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        main {
+            flex: 1;
+        }
+        footer {
+            background-color: #f8f9fa;
+            text-align: center;
+            padding: 1em 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+            <a class="navbar-brand" href="#">{{ config.presetup.company_name }}</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarColor01" aria-controls="navbarColor01" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarColor01">
+                <ul class="navbar-nav mr-auto">
+                    <li class="nav-item {% if active_page == 'home' %}active{% endif %}">
+                        <a class="nav-link" href="{{ url_for('home') }}">{{ lang.header.homepage }}</a>
+                    </li>
+                    <li class="nav-item {% if active_page == 'about' %}active{% endif %}">
+                        <a class="nav-link" href="https://vamting.com">{{ lang.header.about }}</a>
+                    </li>
+                    <li class="nav-item">
+                        <form action="{{ url_for('logout') }}" method="post" style="display: inline;">
+                            <button type="submit" class="btn btn-link nav-link">{{ lang.header.log_out }}</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class=" bs-component mt-3">
+                    {% for category, message in messages %}
+                          <div class="alert alert-dismissible alert-{{ category }}">
+                            {{ message }}
+                              <button type="button" class="close" aria-label="Close" onclick="refreshPage()">×</button>
+                          </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        <main class="bg-dark">
+            {% block content %}
+            <!-- Content will be inserted here -->
+            {% endblock %}
+        </main>
+        <footer class="bg-body-tertiary">
+            &copy; 2025 Vamting IT
+        </footer>
+    </div>
+    <script src="{{ url_for('static', filename='js/popper.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+    <script>
+        function refreshPage() {
+            window.location.reload(); // Refresh the current page
+        }
+    </script>
+</body>
+</html>
