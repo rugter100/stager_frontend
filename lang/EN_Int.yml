@@ -8,6 +8,7 @@ page_title:
   home: "Homepage"
   account: "Account"
   settings: "Settings"
+  open_shifts: "Open Shifts"
 
 messages:
   unknown_shift: "That shift is unknown to us. Sorry! If you believe this to be a bug please let us know"
@@ -26,10 +27,9 @@ login:
 # Header/footer
 header:
   homepage: "Home"
-  about: "About this tool"
+  avalible_shifts: "Avalible Shifts"
   log_out: "Log Out"
   settings: "Settings"
-  meters_all: "All meters"
 
 # Homepage Translations /home
 home:
@@ -43,6 +43,10 @@ details:
   employee_name: "Name"
   artist: "Artist"
   show_times: "Show times"
+
+open_shifts:
+  title: "Open Shifts"
+  avalible: "Avalible"
 
 # Error translations
 errors:

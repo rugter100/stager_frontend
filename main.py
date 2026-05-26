@@ -174,6 +174,11 @@ def update_caches(id: str, get_open_shifts=False, skip_scrape=False, date=False)
                 temp_dict['shows'] = {}
                 temp_dict['shows'][show['eventName']] = []
                 for shift in show['shifts']:
+                    shift_length = datetime.fromisoformat(shift['end']) - datetime.fromisoformat(shift['start'])
+                    shift_length = int(shift_length.total_seconds())
+                    hours = round(shift_length / 3600, 2)
+                    shift_length = f"{hours}h"
+                    shift['length'] = shift_length
                     temp_dict['shows'][show['eventName']].append(shift)
 
             if show_date['date'] not in shiftCache[id].keys():
