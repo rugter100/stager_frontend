@@ -1,16 +1,17 @@
 import base64
 import json
 import os
+import queue
 import re
 import yaml
 import requests
+import threading
 
 from datetime import datetime
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask import Flask, request, Response, render_template, abort, send_from_directory, url_for, redirect, session, \
     flash, jsonify
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from threading import Thread
 
 import libraries.logger as logger
 import libraries.ntfy as ntfy
@@ -25,7 +26,7 @@ app = Flask(__name__)
 
 
 def load(reload=False):
-    global cfg, stager, default_language, languages, shiftCache, siteCache, scraper, loading_state, already_updating_cache
+    global cfg, stager, default_language, languages, shiftCache, siteCache, scraper, loading_state
 
     with open(r'config.json', encoding='utf-8') as config:
         cfg = json.load(config)
@@ -70,7 +71,6 @@ def load(reload=False):
     shiftCache = {}
     siteCache = {}
     loading_state = {}
-    already_updating_cache = False
 
     scraper = scrp.Scraper(cfg['dev_options']['debug'])
 
@@ -84,6 +84,8 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = '/'
 
+job_lock = threading.Lock()
+
 load()
 
 push_note = ntfy.send()
@@ -94,6 +96,7 @@ class User(UserMixin):
     def __init__(self, id, language=None):
         self.id = id
         self.language = language or cfg['gui']['language']
+        self.last_cache = 0
 
     def get_id(self):
         return self.id
@@ -106,13 +109,31 @@ def slugify(text):
     return text
 
 
-def update_caches(id: str, get_open_shifts=False, skip_scrape=False, date=False):
-    already_updating_cache = True
+job_queue = queue.Queue()
+
+
+def worker():
+    while True:
+        user_id = job_queue.get()  # waits for next job
+        try:
+            update_caches(user_id)
+        finally:
+            job_queue.task_done()
+
+
+threading.Thread(target=worker, daemon=True).start()
+
+
+def trigger_cache_update(user):
+    if datetime.now().timestamp() - user.last_cache >= cfg['gui']['update_interval_stager'] * 60:
+        job_queue.put(user.id)
+        log.info(f"Queued Cache update for: {user.id}")
+
+def update_caches(id: str, get_open_shifts=True, skip_scrape=False, date=False):
     loading_state[id] = {'partial_load': False, 'full_load': False}
 
     # Get all assigned shifts via the ID/Token
     rawShiftsDict = stager.assignedShifts(id)['myShiftsByDate']
-
 
     # Get shift details from stager for each date found in rawShiftsDict
     for shifts in rawShiftsDict:
@@ -166,7 +187,6 @@ def update_caches(id: str, get_open_shifts=False, skip_scrape=False, date=False)
         loading_state[id]['partial_load'] = True
 
     if get_open_shifts:
-        print("Getting Open Shifts :)")
         rawOpenShifts = stager.openShifts(id)['openShiftsByDate']
         for show_date in rawOpenShifts:
             temp_dict = {'isAvalible': show_date['isAvailable']}
@@ -186,9 +206,7 @@ def update_caches(id: str, get_open_shifts=False, skip_scrape=False, date=False)
 
             shiftCache[id][show_date['date']]['open_shifts'] = temp_dict
 
-
-
-            #shiftCache[id][shift['date']]['openShifts'] = shift
+            # shiftCache[id][shift['date']]['openShifts'] = shift
 
     # Get data from neushoorn website
     if not skip_scrape:
@@ -213,7 +231,6 @@ def update_caches(id: str, get_open_shifts=False, skip_scrape=False, date=False)
                 siteCache[key]['shows'] = scraper.get_program_data(key, cfg['dev_options']['ui_test'])
                 siteCache[key]['last_updated'] = datetime.now().timestamp()
                 loading_state[id]['partial_load'] = True
-        already_updating_cache = False
     loading_state[id] = {'partial_load': True, 'full_load': True}
 
 
@@ -280,8 +297,7 @@ def logout():
 def home():
     log.info(f"Recieving {request.method} to {request.full_path} from {request.remote_addr}")
     # update_caches(current_user.id)
-    if not already_updating_cache:
-        Thread(target=update_caches, args=(current_user.id,), daemon=True).start()
+    trigger_cache_update(current_user)
     return render_template('home.html', config=cfg, lang=languages[current_user.language], active_page='home',
                            shifts=shiftCache[current_user.id])
 
@@ -290,7 +306,7 @@ def home():
 @login_required
 def open_shifts():
     log.info(f"Recieving {request.method} to {request.full_path} from {request.remote_addr}")
-    Thread(target=update_caches, args=(current_user.id, True, already_updating_cache), daemon=True).start()
+    trigger_cache_update(current_user)
     return render_template('open_shifts.html', config=cfg, lang=languages[current_user.language],
                            active_page='open_shifts')
 
