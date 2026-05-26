@@ -134,7 +134,7 @@ class Scraper:
         self.log.info(f"Successfully scraped: {url}", self.debug)
         return result
 
-    def get_program_data(self, target_date):
+    def get_program_data(self, target_date, debug=False):
         self.log.info(f"Scraping for {target_date}")
         headers = {"User-Agent": "Mozilla/5.0"}
         html = requests.get(self.url, headers=headers).text

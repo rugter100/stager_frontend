@@ -8,8 +8,9 @@ import requests
 from datetime import datetime
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask import Flask, request, Response, render_template, abort, send_from_directory, url_for, redirect, session, \
-    flash
+    flash, jsonify
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from threading import Thread
 
 import libraries.logger as logger
 import libraries.ntfy as ntfy
@@ -24,12 +25,13 @@ app = Flask(__name__)
 
 
 def load(reload=False):
-    global cfg, stager, default_language, languages, shiftCache, siteCache, scraper
+    global cfg, stager, default_language, languages, shiftCache, siteCache, scraper, loading_state, already_updating_cache
 
     with open(r'config.json', encoding='utf-8') as config:
         cfg = json.load(config)
 
-    stager = stagerApi.stagerApi(f"https://{cfg['webinterface_backend']['stager_subdomain']}.stager.co/mobile/", cfg['dev_options']['debug'])
+    stager = stagerApi.stagerApi(f"https://{cfg['webinterface_backend']['stager_subdomain']}.stager.co/mobile/",
+                                 cfg['dev_options']['debug'])
 
     if cfg['dev_options']['devmode']:
         log.warn(
@@ -67,6 +69,8 @@ def load(reload=False):
 
     shiftCache = {}
     siteCache = {}
+    loading_state = {}
+    already_updating_cache = False
 
     scraper = scrp.Scraper(cfg['dev_options']['debug'])
 
@@ -101,19 +105,25 @@ def slugify(text):
     text = re.sub(r"\s+", "-", text)  # spaces → hyphens
     return text
 
-def update_caches(id: str, date=False):
+
+def update_caches(id: str, get_open_shifts=False, skip_scrape=False, date=False):
+    already_updating_cache = True
+    loading_state[id] = {'partial_load': False, 'full_load': False}
 
     # Get all assigned shifts via the ID/Token
     rawShiftsDict = stager.assignedShifts(id)['myShiftsByDate']
 
+
+    # Get shift details from stager for each date found in rawShiftsDict
     for shifts in rawShiftsDict:
         if date and date != shifts['date']:
             # Skips the item if the date doesnt match the requested date
             continue
-        elif shifts['date'] not in shiftCache[id].keys():
+        elif shifts['date'] not in shiftCache[id].keys() or "last_updated" not in shiftCache[id][shifts['date']].keys():
             # Skips the other if loop because itll fail otherwise
             pass
-        elif datetime.now().timestamp() - shiftCache[id][shifts['date']]['last_updated'] < cfg['gui']['update_interval'] * 60:
+        elif datetime.now().timestamp() - shiftCache[id][shifts['date']]['last_updated'] < cfg['gui'][
+            'update_interval_stager'] * 60:
             # runs if the cache for the date has not been updated for at least the update interval anmount of time
             continue
         log.info(f"Updating shift details for: {shifts['date']}")
@@ -153,23 +163,53 @@ def update_caches(id: str, date=False):
         # Update shift Cache
         shiftCache[id][shifts['date']] = {"shifts": shifts['groups'][0]['shifts'], "colleagues": sorted_shifts,
                                           "last_updated": datetime.now().timestamp()}
+        loading_state[id]['partial_load'] = True
 
-    if date:
-        if date not in siteCache.keys():
-            siteCache[date] = {}
-        elif datetime.now().timestamp() - siteCache[date]['last_updated'] < cfg['gui']['update_interval'] * 60:
-            return
-        siteCache[date]['shows'] = scraper.get_program_data(date)
-        siteCache[date]['last_updated'] = datetime.now().timestamp()
-    else:
-        for key in shiftCache[id].keys():
-            if key not in siteCache.keys():
-                siteCache[key] = {}
-            elif datetime.now().timestamp() - siteCache[key]['last_updated'] < cfg['gui']['update_interval'] * 60:
-                continue
-            log.info(f"Updating sitecache for: {key}")
-            siteCache[key]['shows'] = scraper.get_program_data(key)
-            siteCache[key]['last_updated'] = datetime.now().timestamp()
+    if get_open_shifts:
+        print("Getting Open Shifts :)")
+        rawOpenShifts = stager.openShifts(id)['openShiftsByDate']
+        for show_date in rawOpenShifts:
+            temp_dict = {'isAvalible': show_date['isAvailable']}
+            for show in show_date['groups']:
+                temp_dict['shows'] = {}
+                temp_dict['shows'][show['eventName']] = []
+                for shift in show['shifts']:
+                    temp_dict['shows'][show['eventName']].append(shift)
+
+            if show_date['date'] not in shiftCache[id].keys():
+                shiftCache[id][show_date['date']] = {}
+
+            shiftCache[id][show_date['date']]['open_shifts'] = temp_dict
+
+
+
+            #shiftCache[id][shift['date']]['openShifts'] = shift
+
+    # Get data from neushoorn website
+    if not skip_scrape:
+        if date:
+            if date not in siteCache.keys():
+                siteCache[date] = {}
+            elif datetime.now().timestamp() - siteCache[date]['last_updated'] < cfg['gui'][
+                'update_interval_neushoorn'] * 3600:
+                return
+            siteCache[date]['shows'] = scraper.get_program_data(date)
+            siteCache[date]['last_updated'] = datetime.now().timestamp()
+        else:
+            for key in shiftCache[id].keys():
+                if key not in siteCache.keys():
+                    siteCache[key] = {}
+                elif 'last_updated' not in siteCache[key].keys():
+                    siteCache[key]['last_updated'] = 0
+                elif datetime.now().timestamp() - siteCache[key]['last_updated'] < cfg['gui'][
+                    'update_interval_neushoorn'] * 3600:
+                    continue
+                log.info(f"Updating sitecache for: {key}")
+                siteCache[key]['shows'] = scraper.get_program_data(key, cfg['dev_options']['ui_test'])
+                siteCache[key]['last_updated'] = datetime.now().timestamp()
+                loading_state[id]['partial_load'] = True
+        already_updating_cache = False
+    loading_state[id] = {'partial_load': True, 'full_load': True}
 
 
 # User loader for Flask-Login
@@ -234,17 +274,41 @@ def logout():
 @login_required
 def home():
     log.info(f"Recieving {request.method} to {request.full_path} from {request.remote_addr}")
-    update_caches(current_user.id)
-    return render_template('home.html',
-                           config=cfg, lang=languages[current_user.language], active_page='home',
+    # update_caches(current_user.id)
+    if not already_updating_cache:
+        Thread(target=update_caches, args=(current_user.id,), daemon=True).start()
+    return render_template('home.html', config=cfg, lang=languages[current_user.language], active_page='home',
                            shifts=shiftCache[current_user.id])
+
+
+@app.route('/open_shifts')
+@login_required
+def open_shifts():
+    log.info(f"Recieving {request.method} to {request.full_path} from {request.remote_addr}")
+    Thread(target=update_caches, args=(current_user.id, True, already_updating_cache), daemon=True).start()
+    return render_template('open_shifts.html', config=cfg, lang=languages[current_user.language],
+                           active_page='open_shifts')
+
+
+@app.route("/api/loading_state")
+@login_required
+def api_loading_state():
+    loading = loading_state[current_user.id].copy()
+    loading_state[id] = {'partial_load': False, 'full_load': False}
+    return jsonify(loading_state[current_user.id])
+
+
+@app.route("/api/shifts")
+@login_required
+def api_shifts():
+    return jsonify(shiftCache[current_user.id])
 
 
 @app.route('/shifts/<date>')
 @login_required
 def shift_details(date):
     log.info(f"Recieving {request.method} to {request.full_path} from {request.remote_addr}")
-    update_caches(current_user.id, date)
+    update_caches(current_user.id, date=date)
     if date not in shiftCache[current_user.id]:
         flash(languages[current_user.language]['messages']['unknown_shift'], 'danger')
         return redirect(url_for('home'))

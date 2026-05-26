@@ -21,33 +21,34 @@
       "Lockerservice",
       "Fotograaf"
     ],
-    "update_interval": 15
+    "update_interval_stager": 15,
+    "update_interval_neushoorn": 24
   },
   "webinterface_backend": {
     "external_address": "http://localhost",
     "stager_subdomain": "neushoorn",
     "behind_proxy": false,
     "bind_ip": "0.0.0.0",
-    "bind_port": 5000,
+    "bind_port": 2048,
     "login": {
-      "simple_mode": true,
+      "simple_mode": false,
       "username": "test",
       "password": "1234"
     }
   },
   "presetup": {
-    "company_name": "Vamting Dev",
+    "company_name": "Company Name",
     "company_url": "https://vamting.com",
-    "company_id": "VAMT_DEV",
+    "company_id": "CHANGE_ID",
     "ntfy": {
-      "domain": "https://ntfy.vmti.link",
-      "topic": "testchannel"
+      "domain": "https://ntfy.com",
+      "topic": "demo"
     }
   },
   "dev_options": {
     "debug": false,
     "devmode": false,
-    "wipe_logs": true,
+    "wipe_logs": false,
     "ui_test": false
   }
 }

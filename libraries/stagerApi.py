@@ -73,6 +73,9 @@ class stagerApi:
         return request.json()
 
     def openShifts(self, sessionToken: str) -> dict:
+        if sessionToken == "test":
+            with open(r'test_data/crew/open-shifts.json', encoding='utf-8') as f:
+                return json.load(f)
         header = self.headers.copy()
         header["Authorization"] = "Bearer " + sessionToken
         request = requests.get(self.server_url + "crew/open-shifts", headers=header)
