@@ -79,6 +79,8 @@ class file_logger():
         if cmdout:
             if not cmdout_error:
                 errmsg = ""
+            elif err:
+                errmsg = f"\n{self._get_time_now()} [{name}][ERMSG]{err}"
             print(f"{self._get_time_now()} [{name}][WARN] {msg}{errmsg}")
 
     def error(self, msg:str='No Message', err=False, cmdout=True, name:str=None):

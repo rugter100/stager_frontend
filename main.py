@@ -29,7 +29,7 @@ def load(reload=False):
     with open(r'config.json', encoding='utf-8') as config:
         cfg = json.load(config)
 
-    stager = stagerApi.stagerApi(f"https://{cfg['webinterface_backend']['stager_subdomain']}.stager.co/mobile/")
+    stager = stagerApi.stagerApi(f"https://{cfg['webinterface_backend']['stager_subdomain']}.stager.co/mobile/", cfg['dev_options']['debug'])
 
     if cfg['dev_options']['devmode']:
         log.warn(
@@ -68,7 +68,7 @@ def load(reload=False):
     shiftCache = {}
     siteCache = {}
 
-    scraper = scrp.Scraper()
+    scraper = scrp.Scraper(cfg['dev_options']['debug'])
 
     random_bytes = os.urandom(48)
     app.secret_key = base64.b64encode(random_bytes).decode('utf-8')  # Generates and encodes a random 24-byte secret key
@@ -100,6 +100,76 @@ def slugify(text):
     text = re.sub(r"[^\w\s-]", "", text)  # remove punctuation except spaces and hyphens
     text = re.sub(r"\s+", "-", text)  # spaces → hyphens
     return text
+
+def update_caches(id: str, date=False):
+
+    # Get all assigned shifts via the ID/Token
+    rawShiftsDict = stager.assignedShifts(id)['myShiftsByDate']
+
+    for shifts in rawShiftsDict:
+        if date and date != shifts['date']:
+            # Skips the item if the date doesnt match the requested date
+            continue
+        elif shifts['date'] not in shiftCache[id].keys():
+            # Skips the other if loop because itll fail otherwise
+            pass
+        elif datetime.now().timestamp() - shiftCache[id][shifts['date']]['last_updated'] < cfg['gui']['update_interval'] * 60:
+            # runs if the cache for the date has not been updated for at least the update interval anmount of time
+            continue
+        log.info(f"Updating shift details for: {shifts['date']}")
+        # Get colleagues if not already in cache and/or not recently updated
+        colleagues = stager.colleagues(id, shifts['date'])
+        shift_number = 0
+        for colleague in colleagues['groupsByEvent'][0]['shiftsByTeam'][0]['shifts']:
+            shift_length = datetime.fromisoformat(colleague['end']) - datetime.fromisoformat(colleague['start'])
+            shift_length = int(shift_length.total_seconds())
+            hours = round(shift_length / 3600, 2)
+            shift_length = f"{hours}h"
+            colleagues['groupsByEvent'][0]['shiftsByTeam'][0]['shifts'][shift_number]['length'] = shift_length
+            shift_number += 1
+
+        # Sort colleague list based on function
+        order_lookup = {
+            role: index
+            for index, role in enumerate(cfg['gui']['function_order'])
+        }
+        sorted_shifts = sorted(
+            colleagues['groupsByEvent'][0]['shiftsByTeam'][0]['shifts'],
+            key=lambda shift: order_lookup.get(
+                shift["role"],
+                float("inf")  # unknown roles go to the end
+            )
+        )
+
+        shift_number = 0
+        for entry in shifts['groups'][0]['shifts']:
+            shift_length = datetime.fromisoformat(entry['end']) - datetime.fromisoformat(entry['start'])
+            shift_length = int(shift_length.total_seconds())
+            hours = round(shift_length / 3600, 2)
+            shift_length = f"{hours}h"
+            shifts['groups'][0]['shifts'][shift_number]['length'] = shift_length
+            shift_number += 1
+
+        # Update shift Cache
+        shiftCache[id][shifts['date']] = {"shifts": shifts['groups'][0]['shifts'], "colleagues": sorted_shifts,
+                                          "last_updated": datetime.now().timestamp()}
+
+    if date:
+        if date not in siteCache.keys():
+            siteCache[date] = {}
+        elif datetime.now().timestamp() - siteCache[date]['last_updated'] < cfg['gui']['update_interval'] * 60:
+            return
+        siteCache[date]['shows'] = scraper.get_program_data(date)
+        siteCache[date]['last_updated'] = datetime.now().timestamp()
+    else:
+        for key in shiftCache[id].keys():
+            if key not in siteCache.keys():
+                siteCache[key] = {}
+            elif datetime.now().timestamp() - siteCache[key]['last_updated'] < cfg['gui']['update_interval'] * 60:
+                continue
+            log.info(f"Updating sitecache for: {key}")
+            siteCache[key]['shows'] = scraper.get_program_data(key)
+            siteCache[key]['last_updated'] = datetime.now().timestamp()
 
 
 # User loader for Flask-Login
@@ -140,6 +210,8 @@ def login():
         user = User(id=token)
         login_user(user)
         lang = languages[user.language]
+        if user.id not in shiftCache.keys():
+            shiftCache[user.id] = {}
         flash(lang['login']['login_successful'], 'success')
         log.info(f"User {username} logged in successfully")
         return redirect(url_for('home'))
@@ -162,50 +234,24 @@ def logout():
 @login_required
 def home():
     log.info(f"Recieving {request.method} to {request.full_path} from {request.remote_addr}")
-    rawShiftsDict = stager.assignedShifts(current_user.id)['myShiftsByDate']
-    shiftsDict = {}
-    for shifts in rawShiftsDict:
-        colleagues = stager.colleagues(current_user.id, shifts['date'])
-        shiftsDict[shifts['date']] = {"shifts": shifts['groups'][0]['shifts'],
-                                      "colleagues": colleagues['groupsByEvent'][0]['shiftsByTeam'][0]['shifts']}
-
-        shiftCache[current_user.id] = shiftsDict
-
-    for key in shiftsDict.keys():
-        if key not in siteCache:
-            siteCache[key] = scraper.get_program_data(key)
+    update_caches(current_user.id)
     return render_template('home.html',
                            config=cfg, lang=languages[current_user.language], active_page='home',
-                           shifts=shiftsDict)
+                           shifts=shiftCache[current_user.id])
 
 
 @app.route('/shifts/<date>')
 @login_required
 def shift_details(date):
+    log.info(f"Recieving {request.method} to {request.full_path} from {request.remote_addr}")
+    update_caches(current_user.id, date)
     if date not in shiftCache[current_user.id]:
         flash(languages[current_user.language]['messages']['unknown_shift'], 'danger')
         return redirect(url_for('home'))
     else:
-        order_lookup = {
-            role: index
-            for index, role in enumerate(cfg['gui']['function_order'])
-        }
-        sorted_shifts = sorted(
-            shiftCache[current_user.id][date]['colleagues'],
-            key=lambda shift: order_lookup.get(
-                shift["role"],
-                float("inf")  # unknown roles go to the end
-            )
-        )
-        shiftCache[current_user.id][date]['colleagues'] = sorted_shifts
-
-        if date not in siteCache:
-            siteCache[date] = scraper.get_program_data(date)
-
-        print(siteCache)
-
         return render_template('shift_details.html', config=cfg, lang=languages[current_user.language],
-                               active_page='shift_details', details=shiftCache[current_user.id][date], siteCache=siteCache[date], date=date)
+                               active_page='shift_details', details=shiftCache[current_user.id][date],
+                               siteCache=siteCache[date], date=date)
 
 
 if cfg['dev_options']['devmode']:

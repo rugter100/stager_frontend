@@ -10,13 +10,14 @@
 
     <!-- Cards -->
         {% for key, shift in shifts.items() %}
+        {% if key != "last_updated" %}
         <form action="{{ url_for('shift_details', date=key) }}" method="GET">
             <div class="card bg-dark" style="width: 320px;">
                 <div class="card-header text-center">{{ key }}</div>
                     <div class="card-body p-3">
                         <div class="mx-auto">
                             <h4 class="text-center mb-4">{{ shift.shifts.0.eventName }}</h4>
-                            <label class="form-label d-block text-center">{{ shift.shifts.0.role }} - {{ shift.shifts.0.start|format_time }} - {{ shift.shifts.0.end|format_time }}</label>
+                            <label class="form-label d-block text-center">{{ shift.shifts.0.role }} - {{ shift.shifts.0.start|format_time }} - {{ shift.shifts.0.end|format_time }} - {{ shift.shifts.0.length }}</label>
                             {% for colleague in shift.colleagues %}
                                 {% if colleague.role == "Productieleider" %}
                                     <label class="form-label d-block text-center">PL: {{ colleague.crewMemberName }}</label>
@@ -29,6 +30,7 @@
                 </div>
             </div>
         </form>
+        {% endif %}
         {% endfor %}
     </div>
 </div>

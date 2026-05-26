@@ -29,7 +29,7 @@
                             "Productieleider" %}class="table-active"{% endif %}>
                             <th scope="row" style="width: 100px;">{{ colleague.role }}</th>
                             <td>{{ colleague.crewMemberName }}<br/>{{ colleague.start|format_time }} - {{
-                                colleague.end|format_time }}
+                                colleague.end|format_time }} - {{ colleague.length }}
                             </td>
                             </tr>
                             {% endfor %}
@@ -40,7 +40,7 @@
             </div>
         </div>
         <!-- Show cards -->
-        {% for show in siteCache %}
+        {% for show in siteCache.shows %}
         <div class="card bg-dark" style="width: 400px;">
             <div class="card-header text-center p-3">
                 <h4>{{ show.title }}<h4/>

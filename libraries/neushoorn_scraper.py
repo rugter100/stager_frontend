@@ -2,11 +2,15 @@ import requests
 from bs4 import BeautifulSoup
 import re
 from datetime import datetime
+import libraries.logger as logger
 
 
 class Scraper:
-    def __init__(self):
+    def __init__(self, debug: bool = False):
         self.url = "https://www.neushoorn.nl/programma"
+        self.log = logger.file_logger()
+        self.log.initialize("NHScraper")
+        self.debug = debug
 
         self.months = {
             "jan": "01", "feb": "02", "mar": "03", "apr": "04",
@@ -127,9 +131,11 @@ class Scraper:
                     "artist": artist
                 })
 
+        self.log.info(f"Successfully scraped: {url}", self.debug)
         return result
 
     def get_program_data(self, target_date):
+        self.log.info(f"Scraping for {target_date}")
         headers = {"User-Agent": "Mozilla/5.0"}
         html = requests.get(self.url, headers=headers).text
         soup = BeautifulSoup(html, "html.parser")
@@ -159,11 +165,10 @@ class Scraper:
             parsed_date = self._parse_date(raw_date, target_date.split("-")[0]) if raw_date else None
             if parsed_date > target_date:
                 break
-
-            event_details = self._scrape_event(full_link)
-
-            # --- Match ---
             if parsed_date == target_date:
+                event_details = self._scrape_event(full_link)
+
+                # --- Match ---
                 results.append({
                     "title": title,
                     "date": parsed_date,
@@ -171,4 +176,5 @@ class Scraper:
                     "event_details": event_details
                 })
 
+        self.log.info(f"Successfully scraped: {self.url} for date {target_date}", self.debug)
         return results

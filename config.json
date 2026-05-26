@@ -4,15 +4,24 @@
     "language": "EN_Int",
     "function_order": [
       "Productieleider",
+      "Beveiliging",
       "FOH grote zaal",
       "Licht grote zaal",
       "FOH Arena",
       "Licht Arena",
       "FOH Cafe",
+      "Geluid 1.48",
       "Stagehand / ATM",
+      "Artist Host 1",
+      "Artist Host 2",
+      "Bar Aanspreekpunt",
       "Medewerker Nacht - Bar",
-      "Bar"
-    ]
+      "Bar",
+      "Crowd Control",
+      "Lockerservice",
+      "Fotograaf"
+    ],
+    "update_interval": 15
   },
   "webinterface_backend": {
     "external_address": "http://localhost",
@@ -36,7 +45,7 @@
     }
   },
   "dev_options": {
-    "debug": true,
+    "debug": false,
     "devmode": false,
     "wipe_logs": true,
     "ui_test": false
