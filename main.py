@@ -260,7 +260,7 @@ def update_caches(id: str, get_open_shifts=True, skip_scrape=False, date=False):
             # shiftCache[id][shift['date']]['openShifts'] = shift
 
     # Get data from neushoorn website
-    """if not skip_scrape:
+    if not skip_scrape:
         if date:
             if date not in siteCache.keys():
                 siteCache[date] = {}
@@ -281,7 +281,7 @@ def update_caches(id: str, get_open_shifts=True, skip_scrape=False, date=False):
                 log.info(f"Updating sitecache for: {key}")
                 siteCache[key]['shows'] = scraper.get_program_data(key, cfg['dev_options']['ui_test'])
                 siteCache[key]['last_updated'] = datetime.now().timestamp()
-                loading_state[id]['partial_load'] = True"""
+                loading_state[id]['partial_load'] = True
     loading_state[id] = {'partial_load': True, 'full_load': True}
     loading_state['running'] = False
 
