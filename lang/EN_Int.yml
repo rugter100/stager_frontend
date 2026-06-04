@@ -27,6 +27,7 @@ login:
 
 # Header/footer
 header:
+  pages: "Pages"
   homepage: "Home"
   avalible_shifts: "Avalible Shifts"
   past_shifts: "Past Shifts"

@@ -35,20 +35,17 @@
     <a class="navbar-brand" href="#">{{ config.presetup.company_name }}</a>
 
     <div class="navbar-nav flex-row gap-3">
-        <a class="nav-link {% if active_page == 'home' %}active{% endif %}"
-           href="{{ url_for('home') }}">
-            {{ lang.header.homepage }}
-        </a>
 
-        <a class="nav-link {% if active_page == 'open_shifts' %}active{% endif %}"
-           href="{{ url_for('open_shifts') }}">
-            {{ lang.header.avalible_shifts }}
-        </a>
-
-        <a class="nav-link {% if active_page == 'past_shifts' %}active{% endif %}"
-           href="{{ url_for('past_shifts') }}">
-            {{ lang.header.past_shifts }}
-        </a>
+        <div class="dropdown">
+            <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                {{ lang.header.pages }}
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" style="">
+                <li><a class="dropdown-item" href="{{ url_for('home') }}">{{ lang.header.homepage }}</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('open_shifts') }}">{{ lang.header.avalible_shifts }}</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('past_shifts') }}">{{ lang.header.past_shifts }}</a></li>
+            </ul>
+        </div>
 
         <div class="dropdown">
             <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
