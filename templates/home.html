@@ -21,11 +21,13 @@ function formatTime(isoString) {
 }
 
 function renderShifts(shifts) {
+    console.log("ShiftData:", shifts);
     const container = document.getElementById("shift-container");
     container.innerHTML = "";
 
     for (const [key, shift] of Object.entries(shifts)) {
         if (key === "last_updated") continue;
+        if (!shift.shifts) continue;
 
         const pl = shift.colleagues
             .filter(c => c.role === "Productieleider")

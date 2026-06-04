@@ -1,5 +1,6 @@
 import base64
 import json
+import logging
 import os
 import queue
 import re
@@ -12,6 +13,9 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from flask import Flask, request, Response, render_template, abort, send_from_directory, url_for, redirect, session, \
     flash, jsonify
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.events import EVENT_JOB_MAX_INSTANCES
 
 import libraries.logger as logger
 import libraries.ntfy as ntfy
@@ -24,9 +28,15 @@ log.info("Logging Initialized!")
 
 app = Flask(__name__)
 
+# Create a scheduler instance
+scheduler = BackgroundScheduler(daemon=True)
+
+
+apscheduler_logger = logging.getLogger('apscheduler')
+apscheduler_logger.setLevel(logging.ERROR)  # Hide warnings & info from APScheduler internals
 
 def load(reload=False):
-    global cfg, stager, default_language, languages, shiftCache, siteCache, scraper, loading_state
+    global cfg, stager, default_language, languages, shiftCache, siteCache, scraper, loading_state, user_cache
 
     with open(r'config.json', encoding='utf-8') as config:
         cfg = json.load(config)
@@ -68,8 +78,24 @@ def load(reload=False):
             _check_lang(lang)
             log.info(f"Loaded language {file}")
 
-    shiftCache = {}
-    siteCache = {}
+    if os.path.isfile("data/shiftCache.json"):
+        with open("data/shiftCache.json", "r") as f:
+            shiftCache = json.load(f)
+    else:
+        shiftCache = {}
+
+    if os.path.isfile("data/siteCache.json"):
+        with open("data/siteCache.json", "r") as f:
+            siteCache = json.load(f)
+    else:
+        siteCache = {}
+
+    if os.path.isfile("data/user_cache.json"):
+        with open("data/user_cache.json", "r") as f:
+            user_cache = json.load(f)
+    else:
+        user_cache = {}
+
     loading_state = {}
 
     scraper = scrp.Scraper(cfg['dev_options']['debug'])
@@ -93,10 +119,8 @@ push_note = ntfy.send()
 
 # User class for Flask-Login
 class User(UserMixin):
-    def __init__(self, id, language=None):
+    def __init__(self, id):
         self.id = id
-        self.language = language or cfg['gui']['language']
-        self.last_cache = 0
 
     def get_id(self):
         return self.id
@@ -125,15 +149,17 @@ threading.Thread(target=worker, daemon=True).start()
 
 
 def trigger_cache_update(user):
-    if datetime.now().timestamp() - user.last_cache >= cfg['gui']['update_interval_stager'] * 60:
-        job_queue.put(user.id)
-        log.info(f"Queued Cache update for: {user.id}")
+    if datetime.now().timestamp() - user_cache[user]['last_cache'] >= cfg['gui']['update_interval_stager'] * 60:
+        job_queue.put(user)
+        log.info(f"Queued Cache update for: {user_cache[user]['username']}")
 
 def update_caches(id: str, get_open_shifts=True, skip_scrape=False, date=False):
+    loading_state['running'] = True
     loading_state[id] = {'partial_load': False, 'full_load': False}
 
-    # Get all assigned shifts via the ID/Token
-    rawShiftsDict = stager.assignedShifts(id)['myShiftsByDate']
+    # Get all assigned shifts via the Token
+
+    rawShiftsDict = stager.assignedShifts(user_cache[id]['token'])['myShiftsByDate']
 
     # Get shift details from stager for each date found in rawShiftsDict
     for shifts in rawShiftsDict:
@@ -149,7 +175,7 @@ def update_caches(id: str, get_open_shifts=True, skip_scrape=False, date=False):
             continue
         log.info(f"Updating shift details for: {shifts['date']}")
         # Get colleagues if not already in cache and/or not recently updated
-        colleagues = stager.colleagues(id, shifts['date'])
+        colleagues = stager.colleagues(user_cache[id]['token'], shifts['date'])
         shift_number = 0
         for colleague in colleagues['groupsByEvent'][0]['shiftsByTeam'][0]['shifts']:
             shift_length = datetime.fromisoformat(colleague['end']) - datetime.fromisoformat(colleague['start'])
@@ -186,8 +212,33 @@ def update_caches(id: str, get_open_shifts=True, skip_scrape=False, date=False):
                                           "last_updated": datetime.now().timestamp()}
         loading_state[id]['partial_load'] = True
 
+    shift_ids_1 = {
+        shift["shiftId"]
+        for day in rawShiftsDict
+        for group in day["groups"]
+        for shift in group["shifts"]
+    }
+
+    today = datetime.now().date()
+
+    for date_str, data in shiftCache[id].items():
+        if 'shifts' in data.keys():
+            for shift in data["shifts"]:
+                shift_id = shift["shiftId"]
+
+                # parse shift end date
+                shift_end_date = datetime.fromisoformat(shift["end"]).date()
+
+                if shift_id in shift_ids_1:
+                    shift["state"] = "upcoming"
+                else:
+                    if shift_end_date < today:
+                        shift["state"] = "finished"
+                    else:
+                        shift["state"] = "cancelled"
+
     if get_open_shifts:
-        rawOpenShifts = stager.openShifts(id)['openShiftsByDate']
+        rawOpenShifts = stager.openShifts(user_cache[id]['token'])['openShiftsByDate']
         for show_date in rawOpenShifts:
             temp_dict = {'isAvalible': show_date['isAvailable']}
             for show in show_date['groups']:
@@ -209,7 +260,7 @@ def update_caches(id: str, get_open_shifts=True, skip_scrape=False, date=False):
             # shiftCache[id][shift['date']]['openShifts'] = shift
 
     # Get data from neushoorn website
-    if not skip_scrape:
+    """if not skip_scrape:
         if date:
             if date not in siteCache.keys():
                 siteCache[date] = {}
@@ -230,8 +281,24 @@ def update_caches(id: str, get_open_shifts=True, skip_scrape=False, date=False):
                 log.info(f"Updating sitecache for: {key}")
                 siteCache[key]['shows'] = scraper.get_program_data(key, cfg['dev_options']['ui_test'])
                 siteCache[key]['last_updated'] = datetime.now().timestamp()
-                loading_state[id]['partial_load'] = True
+                loading_state[id]['partial_load'] = True"""
     loading_state[id] = {'partial_load': True, 'full_load': True}
+    loading_state['running'] = False
+
+def save_data():
+    log.info("Saving data")
+    with open('data/shiftCache.json', 'w') as f:
+        json.dump(shiftCache, f)
+    log.info("Saved Shift Cache")
+
+    with open('data/siteCache.json', 'w') as f:
+        json.dump(siteCache, f)
+    log.info("Saved Site Cache")
+
+    with open('data/user_cache.json', 'w') as f:
+        json.dump(user_cache, f)
+    log.info("Saved User Cache")
+
 
 
 # User loader for Flask-Login
@@ -252,12 +319,16 @@ def index():
         request_ip = request.headers.get("X-Real-IP")
     else:
         request_ip = request.remote_addr
-    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}{request.environ['REMOTE_PORT']}")
+    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']}")
     if current_user.is_authenticated:
-        lang = current_user.language
+        lang = languages[user_cache[current_user.id]['lang']]
     else:
-        lang = cfg['gui']['language']
-    return render_template('index.html', config=cfg, lang=languages[lang], hide_nav=True)
+        lang = languages[cfg['gui']['language']]
+    next_url = request.args.get("next")
+
+    if not next_url or not next_url.startswith("/"):
+        next_url = "/home"
+    return render_template('index.html', config=cfg, lang=lang, hide_nav=True, next_url=next_url)
 
 
 @app.route('/login', methods=['POST'])
@@ -266,8 +337,7 @@ def login():
         request_ip = request.headers.get("X-Real-IP")
     else:
         request_ip = request.remote_addr
-    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}{request.environ['REMOTE_PORT']}")
-    print(request.access_route)
+    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']}")
     username = request.form['username']
     password = request.form['password']
     token = None
@@ -278,14 +348,24 @@ def login():
         if 'sessionToken' in login:
             token = login['sessionToken']
     if token:
-        user = User(id=token)
+        user_key = None
+        for key,data in user_cache.items():
+            if data['username'] == username:
+                user_key = key
+                user_cache[key]['token'] = token
+                break
+        if not user_key:
+            user_key = base64.b64encode(os.urandom(48)).decode('utf-8')
+            user_cache[user_key] = {"token": token, "username": username, "password": password,
+                                    "lang": cfg['gui']['language'], "last_cache": 0}
+        user = User(id=user_key)
         login_user(user)
-        lang = languages[user.language]
-        if user.id not in shiftCache.keys():
-            shiftCache[user.id] = {}
+        lang = languages[user_cache[user_key]['lang']]
+        if user_key not in shiftCache.keys():
+            shiftCache[user_key] = {}
         flash(lang['login']['login_successful'], 'success')
         log.info(f"User {username} logged in successfully")
-        return redirect(url_for('home'))
+        return redirect(request.args.get("next_url"))
     else:
         flash(languages[cfg['gui']['language']]['login']['invalid_creds'], 'danger')
         log.info(f"Invalid login attempt for user {username}")
@@ -299,9 +379,9 @@ def logout():
         request_ip = request.headers.get("X-Real-IP")
     else:
         request_ip = request.remote_addr
-    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}{request.environ['REMOTE_PORT']}")
+    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']} as user {user_cache[current_user.id]['username']}")
     logout_user()
-    flash(languages[current_user.language]['login']['logged_out'], 'success')
+    flash(languages[cfg['gui']['language']]['login']['logged_out'], 'success')
     return redirect(url_for('index'))
 
 
@@ -312,10 +392,9 @@ def home():
         request_ip = request.headers.get("X-Real-IP")
     else:
         request_ip = request.remote_addr
-    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}{request.environ['REMOTE_PORT']}")
-    # update_caches(current_user.id)
-    trigger_cache_update(current_user)
-    return render_template('home.html', config=cfg, lang=languages[current_user.language], active_page='home',
+    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']} as user {user_cache[current_user.id]['username']}")
+    trigger_cache_update(current_user.id)
+    return render_template('home.html', config=cfg, lang=languages[user_cache[current_user.id]['lang']], active_page='home',
                            shifts=shiftCache[current_user.id])
 
 
@@ -326,19 +405,21 @@ def open_shifts():
         request_ip = request.headers.get("X-Real-IP")
     else:
         request_ip = request.remote_addr
-    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}{request.environ['REMOTE_PORT']}")
-    trigger_cache_update(current_user)
-    return render_template('open_shifts.html', config=cfg, lang=languages[current_user.language],
+    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']} as user {user_cache[current_user.id]['username']}")
+    trigger_cache_update(current_user.id)
+    return render_template('open_shifts.html', config=cfg, lang=languages[user_cache[current_user.id]['lang']],
                            active_page='open_shifts')
 
 
 @app.route("/api/loading_state")
 @login_required
 def api_loading_state():
-    loading = loading_state[current_user.id].copy()
-    loading_state[id] = {'partial_load': False, 'full_load': False}
-    return jsonify(loading_state[current_user.id])
-
+    if loading_state['running']:
+        loading = loading_state[current_user.id].copy()
+        loading_state[current_user.id] = {'partial_load': False, 'full_load': False}
+        return jsonify(loading)
+    else:
+        return jsonify({'partial_load': True, 'full_load': True})
 
 @app.route("/api/shifts")
 @login_required
@@ -353,21 +434,48 @@ def shift_details(date):
         request_ip = request.headers.get("X-Real-IP")
     else:
         request_ip = request.remote_addr
-    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}{request.environ['REMOTE_PORT']}")
+    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']} as user {user_cache[current_user.id]['username']}")
     update_caches(current_user.id, date=date)
     if date not in shiftCache[current_user.id]:
         flash(languages[current_user.language]['messages']['unknown_shift'], 'danger')
         return redirect(url_for('home'))
     else:
-        return render_template('shift_details.html', config=cfg, lang=languages[current_user.language],
+        return render_template('shift_details.html', config=cfg, lang=languages[user_cache[current_user.id]['lang']],
                                active_page='shift_details', details=shiftCache[current_user.id][date],
                                siteCache=siteCache[date], date=date)
 
+@app.route("/debug")
+@login_required
+def debug():
+    if cfg['dev_options']['debug'] or user_cache[current_user.id]['username'] == "vamting@gmail.com":
+        with open('data/debug_data.json', 'w') as f:
+            json.dump({"ShiftCache": shiftCache, "SiteCache": siteCache, "loading_state": loading_state, "user_cache": user_cache}, f)
+        return jsonify({"ShiftCache": shiftCache, "SiteCache": siteCache, "loading_state": loading_state, "user_cache": user_cache})
+    else:
+        return abort(403)
+
+@app.route("/saveall")
+@login_required
+def save_all():
+    if cfg['dev_options']['debug'] or user_cache[current_user.id]['username'] == "vamting@gmail.com":
+        save_data()
+    return jsonify({"message": "Saved data"})
+
+scheduler.add_job(
+    func=save_data,
+    trigger=IntervalTrigger(hours=4),
+    id='save_data',
+    name='Save cached data',
+    replace_existing=True
+)
 
 if cfg['dev_options']['devmode']:
     app.run(debug=True)
 
 elif __name__ == "__main__":
+
+    scheduler.start()
+    log.info("starting Scheduler")
 
     from waitress import serve
 
