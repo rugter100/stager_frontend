@@ -102,7 +102,6 @@ def load(reload=False):
 
     random_bytes = os.urandom(48)
     app.secret_key = base64.b64encode(random_bytes).decode('utf-8')  # Generates and encodes a random 24-byte secret key
-    log.info(f"Generated Secret Key: {app.secret_key}")
 
 
 # Flask-Login setup
@@ -151,7 +150,7 @@ threading.Thread(target=worker, daemon=True).start()
 def trigger_cache_update(user):
     if datetime.now().timestamp() - user_cache[user]['last_cache'] >= cfg['gui']['update_interval_stager'] * 60:
         job_queue.put(user)
-        log.info(f"Queued Cache update for: {user_cache[user]['username']}")
+        log.info(f"Queued Cache update for: {user_cache[user]['username']}", cmdout=not cfg['presetup']['clean_console'])
 
 def update_caches(id: str, get_open_shifts=True, skip_scrape=False, date=False):
     loading_state['running'] = True
@@ -396,7 +395,7 @@ def home():
         request_ip = request.headers.get("X-Real-IP")
     else:
         request_ip = request.remote_addr
-    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']} as user {user_cache[current_user.id]['username']}")
+    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']} as user {user_cache[current_user.id]['username']}", cmdout=not cfg['presetup']['clean_console'])
     trigger_cache_update(current_user.id)
     return render_template('home.html', config=cfg, lang=languages[user_cache[current_user.id]['lang']], active_page='home',
                            shifts=shiftCache[current_user.id], languages=languages)
@@ -409,7 +408,7 @@ def open_shifts():
         request_ip = request.headers.get("X-Real-IP")
     else:
         request_ip = request.remote_addr
-    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']} as user {user_cache[current_user.id]['username']}")
+    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']} as user {user_cache[current_user.id]['username']}", cmdout=not cfg['presetup']['clean_console'])
     trigger_cache_update(current_user.id)
     return render_template('open_shifts.html', config=cfg, lang=languages[user_cache[current_user.id]['lang']],
                            active_page='open_shifts', languages=languages)
@@ -421,7 +420,7 @@ def past_shifts():
         request_ip = request.headers.get("X-Real-IP")
     else:
         request_ip = request.remote_addr
-    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']} as user {user_cache[current_user.id]['username']}")
+    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']} as user {user_cache[current_user.id]['username']}", cmdout=not cfg['presetup']['clean_console'])
     trigger_cache_update(current_user.id)
     return render_template('past_shifts.html', config=cfg, lang=languages[user_cache[current_user.id]['lang']], active_page='past_shifts',
                            shifts=shiftCache[current_user.id], languages=languages)
@@ -433,7 +432,7 @@ def update_language():
         request_ip = request.headers.get("X-Real-IP")
     else:
         request_ip = request.remote_addr
-    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']} as user {user_cache[current_user.id]['username']}")
+    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']} as user {user_cache[current_user.id]['username']}", cmdout=not cfg['presetup']['clean_console'])
 
     language = request.args.get("lang")
     user_cache[current_user.id]['lang'] = language
@@ -468,7 +467,7 @@ def shift_details(date):
         request_ip = request.headers.get("X-Real-IP")
     else:
         request_ip = request.remote_addr
-    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']} as user {user_cache[current_user.id]['username']}")
+    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']} as user {user_cache[current_user.id]['username']}", cmdout=not cfg['presetup']['clean_console'])
     update_caches(current_user.id, date=date)
     if date not in shiftCache[current_user.id]:
         flash(languages[current_user.language]['messages']['unknown_shift'], 'danger')

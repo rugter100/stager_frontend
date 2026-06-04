@@ -40,15 +40,16 @@
     "company_name": "Company Name",
     "company_url": "https://vamting.com",
     "company_id": "CHANGE_ID",
+    "clean_console": true,
     "ntfy": {
       "domain": "https://ntfy.com",
       "topic": "demo"
     }
   },
   "dev_options": {
-    "debug": false,
+    "debug": true,
     "devmode": false,
-    "wipe_logs": false,
-    "ui_test": false
+    "wipe_logs": true,
+    "ui_test": true
   }
 }
