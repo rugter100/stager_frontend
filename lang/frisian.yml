@@ -1,0 +1,60 @@
+
+# Name shown in settings for selection
+language_name: "Frysk"
+
+#page titles
+page_title:
+  login_title: "Oanmelde"
+  home: "thússide"
+  account: "Account"
+  settings: "Ynstellings"
+  open_shifts: "Iepen Tsjinsten"
+  past_shifts: "Past Tsjinsten"
+
+messages:
+  unknown_shift: "Dy Tsjinst is ûnbekend yn ús systeem! Lit ús witte as jo tinke dat dit in bug is."
+
+# Login Page /
+login:
+  login_name: "neushoorn Stager VT"
+  username: "Email"
+  password: "Wachtwurd"
+  login: "Oanmelde"
+  login_successful: "Mei sukses oanmeld"
+  invalid_creds: "Ferkeard email en/of wachtwurd"
+  must_be_logged_in: 'Jo moatte oanmeld wêze om dizze side te besjen'
+  logged_out: 'Jo binne útlogd'
+
+# Header/footer
+header:
+  homepage: "thússide"
+  avalible_shifts: "Iepen Tsjinsten"
+  past_shifts: "Past Tsjinsten"
+  log_out: "Log út"
+  settings: "Ynstellings"
+  language: "Taal"
+
+# Homepage Translations /home
+home:
+  title: "Folgjende Tsjinsten"
+  details: "Details"
+
+details:
+  title: "Details"
+  colleagues: "Kollega's"
+  function_title: "Funksje"
+  employee_name: "Namme"
+  artist: "Artyst"
+  show_times: "Showtiiden"
+
+open_shifts:
+  title: "Iepen Tsjinsten"
+  avalible: "Beskikberens"
+
+past_shifts:
+  title: "Past Tsjinsten"
+  details: "Details"
+
+# Error translations
+errors:
+  unknown_error: "Der is in ûnbekende flater opnommen, error code: 1"

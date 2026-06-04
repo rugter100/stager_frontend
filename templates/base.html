@@ -50,6 +50,17 @@
             {{ lang.header.past_shifts }}
         </a>
 
+        <div class="dropdown">
+            <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                {{ lang.header.language }}
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" style="">
+                {% for lang_key, lang_option in languages.items() %}
+                <li><a class="dropdown-item" href="{{ url_for('update_language', next=active_page, lang=lang_key) }}">{{ lang_option.language_name }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+
         <form action="{{ url_for('logout') }}" method="post" class="d-inline">
             <button type="submit" class="btn btn-link nav-link">
                 {{ lang.header.log_out }}

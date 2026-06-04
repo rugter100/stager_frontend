@@ -398,8 +398,9 @@ def home():
         request_ip = request.remote_addr
     log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']} as user {user_cache[current_user.id]['username']}")
     trigger_cache_update(current_user.id)
+    print(languages)
     return render_template('home.html', config=cfg, lang=languages[user_cache[current_user.id]['lang']], active_page='home',
-                           shifts=shiftCache[current_user.id])
+                           shifts=shiftCache[current_user.id], languages=languages)
 
 
 @app.route('/open_shifts')
@@ -412,7 +413,7 @@ def open_shifts():
     log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']} as user {user_cache[current_user.id]['username']}")
     trigger_cache_update(current_user.id)
     return render_template('open_shifts.html', config=cfg, lang=languages[user_cache[current_user.id]['lang']],
-                           active_page='open_shifts')
+                           active_page='open_shifts', languages=languages)
 
 @app.route('/past_shifts')
 @login_required
@@ -424,7 +425,25 @@ def past_shifts():
     log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']} as user {user_cache[current_user.id]['username']}")
     trigger_cache_update(current_user.id)
     return render_template('past_shifts.html', config=cfg, lang=languages[user_cache[current_user.id]['lang']], active_page='past_shifts',
-                           shifts=shiftCache[current_user.id])
+                           shifts=shiftCache[current_user.id], languages=languages)
+
+@app.route('/updatelanguage')
+@login_required
+def update_language():
+    if cfg['webinterface_backend']['behind_proxy']:
+        request_ip = request.headers.get("X-Real-IP")
+    else:
+        request_ip = request.remote_addr
+    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']} as user {user_cache[current_user.id]['username']}")
+
+    language = request.args.get("lang")
+    user_cache[current_user.id]['lang'] = language
+
+    next_url = request.args.get("next")
+
+    if not next_url or not next_url.startswith("/"):
+        next_url = url_for("home")
+    return redirect(next_url)
 
 
 @app.route("/api/loading_state")
@@ -458,7 +477,7 @@ def shift_details(date):
     else:
         return render_template('shift_details.html', config=cfg, lang=languages[user_cache[current_user.id]['lang']],
                                active_page='shift_details', details=shiftCache[current_user.id][date],
-                               siteCache=siteCache[date], date=date)
+                               siteCache=siteCache[date], date=date, languages=languages)
 
 @app.route("/debug")
 @login_required

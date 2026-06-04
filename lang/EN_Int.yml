@@ -1,6 +1,6 @@
 
 # Name shown in settings for selection
-language_name: "English International"
+language_name: "English"
 
 #page titles
 page_title:
@@ -32,6 +32,7 @@ header:
   past_shifts: "Past Shifts"
   log_out: "Log Out"
   settings: "Settings"
+  language: "Language"
 
 # Homepage Translations /home
 home:
