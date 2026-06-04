@@ -398,7 +398,6 @@ def home():
         request_ip = request.remote_addr
     log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']} as user {user_cache[current_user.id]['username']}")
     trigger_cache_update(current_user.id)
-    print(languages)
     return render_template('home.html', config=cfg, lang=languages[user_cache[current_user.id]['lang']], active_page='home',
                            shifts=shiftCache[current_user.id], languages=languages)
 
