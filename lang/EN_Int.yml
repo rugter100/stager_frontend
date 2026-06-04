@@ -48,7 +48,7 @@ details:
 
 open_shifts:
   title: "Open Shifts"
-  avalible: "Avalible"
+  avalible: "Avalability"
 
 past_shifts:
   title: "Past Shifts"

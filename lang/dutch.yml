@@ -1,13 +1,18 @@
 
 # Name shown in settings for selection
-language_name: "Nederlands"
+language_name: "English International"
 
 #page titles
 page_title:
   login_title: "Login"
   home: "Homepagina"
   account: "Account"
-  settings: "Settings"
+  settings: "Instellingen"
+  open_shifts: "Open Diensten"
+  past_shifts: "Verleden Diensten"
+
+messages:
+  unknown_shift: "Die shift is onbekend is ons systeem! Laat ons weten als je denkt dat dit een bug is."
 
 # Login Page /
 login:
@@ -15,95 +20,40 @@ login:
   username: "Email"
   password: "Wachtwoord"
   login: "Login"
-  login_successful: "Login Successvol"
-  invalid_creds: "Verkeerde gebruikersnaam en/of wachtwoord."
-  must_be_logged_in: 'U moet ingelogd zijn om die pagina te bezoeken.'
-  logged_out: 'U bent uitgelogd'
+  login_successful: "Successvol ingelogd"
+  invalid_creds: "Fout email en/of wachtwoord"
+  must_be_logged_in: 'Je moet ingelogd zijn om deze pagina te zien'
+  logged_out: 'Je bent uitgelogd'
 
 # Header/footer
 header:
   homepage: "Home"
-  about: "Over deze tool"
-  log_out: "Uitloggen"
+  avalible_shifts: "Open Diensten"
+  past_shifts: "Verleden Diensten"
+  log_out: "Log Uit"
   settings: "Instellingen"
-  meters_all: "Alle meters"
 
 # Homepage Translations /home
-home: "Placeholder"
+home:
+  title: "Volgende Shifts"
+  details: "Details"
 
-# Settings page /settings
-settings:
-  title: "Instellingen"
-  subheader_sidebar: "Globale gebruiksinterface instellingen"
-  language: "Taal"
-  apply_changes: "Wijzigingen toepassen"
-  log_out: "Log uit"
-  metering_stations: "Meetstations"
-  open_node_settings: "Open Node instellingen"
-  adopt_node: "Voeg node toe"
-  gui_settings: "Gebruiksinterface instellingen"
-  data_settings: "Data instellingen"
-  storage_interval: "Kopieer data"
-  storage_interval_prefix: "Elke"
-  storage_interval_suffix: "minuten"
-  raw_data_days: "Niet-compacte data dagen"
-  raw_data_days_suffix: "dag(en)"
-  timedelta_minutes: "Datapunt verspreiding compacte data"
-  timedelta_minutes_prefix: "1 datapunt elke"
-  timedelta_minutes_suffix: "minuten"
+details:
+  title: "Details"
+  colleagues: "Collega's"
+  function_title: "Functie"
+  employee_name: "Naam"
+  artist: "Artiest"
+  show_times: "Showtijden"
 
-# Node settings page /config/nodes/<node_id>
-node_config:
-  title: "Configuraties voor: "
-  connecting: "Verbinden..."
-  online: "Online"
-  offline: "Offline"
-  disabled: "Uitgeschakeld"
-  node_mode_prefix: "Mode:"
+open_shifts:
+  title: "Open Diensten"
+  avalible: "Beschikbaarheid"
 
-
-  global_node_settings: "Globale node instellingen"
-
-  node_name: "Node Naam"
-  node_name_invalid: "Op een of andere manier is deze naam niet toegestaan (er zijn geen checks)"
-  node_name_desc: "Word gebruikt in de gebruikersinterface"
-
-  node_id: "Node ID"
-  node_id_invalid: "De node ID kan alleen: a-z 0-9 of -_ bevatten"
-  node_id_desc: "Dit word gebruikt als unieke identificator en bepaalt bijv de url (/node/<node_id>)"
-
-  server_ip: "Server ip/poort"
-  server_ip_desc: "Standaard: "
-  server_ip_placeholder: "Voer ipv4 adres in"
-  server_ip_invalid: "Het door u ingevoerde IP-adres is ongeldig."
-
-  use_domain_name: "Gebruik HTTPS (W.I.P.)"
-  use_domain_name_desc: "(Vereist het gebruik van domeinnamen en een SSL-Certificaat)"
-
-  reset_node_key: "Node sleutel opnieuw genereren"
-
-  meters_settings: "Meters"
-  select_calibration_profile: "Calibratie:"
-  calibrate_meter: "Calibreer"
-  delete_meter: "Verwijder meter"
-
-  add_meter: "Voeg meter toe"
-
-
-
-# All Meters Page (/meters/all
-meters_all:
-  page_header: "Huidige dB-Metingen"
-
-# Reused for every meter module
-meter_module:
-  dba_15m: "dBA LAeq 15min: "
-  dbc_15m: "dBC LCeq 15min: "
-  dba_1s: "dBA (1 sec): "
-  dbc_1s: "dBC (1 sec): "
-  limit: "Limiet"
+past_shifts:
+  title: "Verleden Diensten"
+  details: "Details"
 
 # Error translations
 errors:
-  unknown_error: "Er is een onbekende error opgetreden. Excuses voor het ongemak. Stuur aub de systeemlogs op naar ons en we zullen hier naar kijken."
-  itemid_not_found: "The itemid was not found in our database. This issue should not have occurred. Please contact your sysadmin with error code: 2"
+  unknown_error: "Er is een onbekende error opgetreden, error code: 1"
