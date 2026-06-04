@@ -248,7 +248,11 @@ def format_time(value):
 
 @app.route('/')
 def index():
-    log.info(f"Recieving {request.method} to {request.full_path} from {request.remote_addr}")
+    if cfg['webinterface_backend']['behind_proxy']:
+        request_ip = request.headers.get("X-Real-IP")
+    else:
+        request_ip = request.remote_addr
+    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}{request.environ['REMOTE_PORT']}")
     if current_user.is_authenticated:
         lang = current_user.language
     else:
@@ -258,7 +262,12 @@ def index():
 
 @app.route('/login', methods=['POST'])
 def login():
-    log.info(f"Recieving {request.method} to {request.full_path} from {request.remote_addr}")
+    if cfg['webinterface_backend']['behind_proxy']:
+        request_ip = request.headers.get("X-Real-IP")
+    else:
+        request_ip = request.remote_addr
+    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}{request.environ['REMOTE_PORT']}")
+    print(request.access_route)
     username = request.form['username']
     password = request.form['password']
     token = None
@@ -286,7 +295,11 @@ def login():
 @app.route('/logout', methods=['POST'])
 @login_required
 def logout():
-    log.info(f"Recieving {request.method} to {request.full_path} from {request.remote_addr}")
+    if cfg['webinterface_backend']['behind_proxy']:
+        request_ip = request.headers.get("X-Real-IP")
+    else:
+        request_ip = request.remote_addr
+    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}{request.environ['REMOTE_PORT']}")
     logout_user()
     flash(languages[current_user.language]['login']['logged_out'], 'success')
     return redirect(url_for('index'))
@@ -295,7 +308,11 @@ def logout():
 @app.route('/home')
 @login_required
 def home():
-    log.info(f"Recieving {request.method} to {request.full_path} from {request.remote_addr}")
+    if cfg['webinterface_backend']['behind_proxy']:
+        request_ip = request.headers.get("X-Real-IP")
+    else:
+        request_ip = request.remote_addr
+    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}{request.environ['REMOTE_PORT']}")
     # update_caches(current_user.id)
     trigger_cache_update(current_user)
     return render_template('home.html', config=cfg, lang=languages[current_user.language], active_page='home',
@@ -305,7 +322,11 @@ def home():
 @app.route('/open_shifts')
 @login_required
 def open_shifts():
-    log.info(f"Recieving {request.method} to {request.full_path} from {request.remote_addr}")
+    if cfg['webinterface_backend']['behind_proxy']:
+        request_ip = request.headers.get("X-Real-IP")
+    else:
+        request_ip = request.remote_addr
+    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}{request.environ['REMOTE_PORT']}")
     trigger_cache_update(current_user)
     return render_template('open_shifts.html', config=cfg, lang=languages[current_user.language],
                            active_page='open_shifts')
@@ -328,7 +349,11 @@ def api_shifts():
 @app.route('/shifts/<date>')
 @login_required
 def shift_details(date):
-    log.info(f"Recieving {request.method} to {request.full_path} from {request.remote_addr}")
+    if cfg['webinterface_backend']['behind_proxy']:
+        request_ip = request.headers.get("X-Real-IP")
+    else:
+        request_ip = request.remote_addr
+    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}{request.environ['REMOTE_PORT']}")
     update_caches(current_user.id, date=date)
     if date not in shiftCache[current_user.id]:
         flash(languages[current_user.language]['messages']['unknown_shift'], 'danger')
