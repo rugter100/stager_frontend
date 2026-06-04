@@ -9,6 +9,7 @@ page_title:
   account: "Account"
   settings: "Settings"
   open_shifts: "Open Shifts"
+  past_shifts: "Past Shifts"
 
 messages:
   unknown_shift: "That shift is unknown to us. Sorry! If you believe this to be a bug please let us know"
@@ -28,6 +29,7 @@ login:
 header:
   homepage: "Home"
   avalible_shifts: "Avalible Shifts"
+  past_shifts: "Past Shifts"
   log_out: "Log Out"
   settings: "Settings"
 
@@ -47,6 +49,10 @@ details:
 open_shifts:
   title: "Open Shifts"
   avalible: "Avalible"
+
+past_shifts:
+  title: "Past Shifts"
+  details: "Details"
 
 # Error translations
 errors:

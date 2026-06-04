@@ -45,6 +45,11 @@
             {{ lang.header.avalible_shifts }}
         </a>
 
+        <a class="nav-link {% if active_page == 'past_shifts' %}active{% endif %}"
+           href="{{ url_for('past_shifts') }}">
+            {{ lang.header.past_shifts }}
+        </a>
+
         <form action="{{ url_for('logout') }}" method="post" class="d-inline">
             <button type="submit" class="btn btn-link nav-link">
                 {{ lang.header.log_out }}

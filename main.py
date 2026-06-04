@@ -410,6 +410,18 @@ def open_shifts():
     return render_template('open_shifts.html', config=cfg, lang=languages[user_cache[current_user.id]['lang']],
                            active_page='open_shifts')
 
+@app.route('/past_shifts')
+@login_required
+def past_shifts():
+    if cfg['webinterface_backend']['behind_proxy']:
+        request_ip = request.headers.get("X-Real-IP")
+    else:
+        request_ip = request.remote_addr
+    log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']} as user {user_cache[current_user.id]['username']}")
+    trigger_cache_update(current_user.id)
+    return render_template('past_shifts.html', config=cfg, lang=languages[user_cache[current_user.id]['lang']], active_page='past_shifts',
+                           shifts=shiftCache[current_user.id])
+
 
 @app.route("/api/loading_state")
 @login_required
