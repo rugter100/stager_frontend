@@ -321,7 +321,11 @@ def index():
         request_ip = request.remote_addr
     log.info(f"Recieving {request.method} to {request.full_path} from {request_ip}:{request.environ['REMOTE_PORT']}")
     if current_user.is_authenticated:
-        lang = languages[user_cache[current_user.id]['lang']]
+        next_url = request.args.get("next")
+
+        if not next_url or not next_url.startswith("/"):
+            next_url = url_for('home')
+        return redirect(next_url)
     else:
         lang = languages[cfg['gui']['language']]
     next_url = request.args.get("next")
