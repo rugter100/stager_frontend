@@ -459,6 +459,21 @@ def api_loading_state():
 def api_shifts():
     return jsonify(shiftCache[current_user.id])
 
+@app.route("/api/updateavailability", methods=["POST"])
+def update_availability(): # This isnt working yet im not sure why
+    return jsonify({"success": False, "error": "Sorry! This feature sadly isn't functional yet"})
+    data = request.get_json()
+
+    if data['available']:
+        available = "AVAILABLE"
+    else:
+        available = "UNAVAILABLE"
+
+    stager_availability = stager.setAvalability(user_cache[current_user.id]['token'], data['date'], available)
+    if stager_availability:
+        shiftCache[current_user.id][data['date']]['open_shifts']['isAvailable'] = data['available']
+        return jsonify({"success": stager_availability})
+
 
 @app.route('/shifts/<date>')
 @login_required
@@ -492,7 +507,18 @@ def debug():
 def save_all():
     if cfg['dev_options']['debug'] or user_cache[current_user.id]['username'] == "vamting@gmail.com":
         save_data()
-    return jsonify({"message": "Saved data"})
+        return jsonify({"message": "Saved data"})
+    else:
+        return abort(403)
+
+@app.route("/reload")
+@login_required
+def reload():
+    if cfg['dev_options']['debug'] or user_cache[current_user.id]['username'] == "vamting@gmail.com":
+        load(True)
+        return jsonify({"message": "Reloaded application"})
+    else:
+        return abort(403)
 
 scheduler.add_job(
     func=save_data,

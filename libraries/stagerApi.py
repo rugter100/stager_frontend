@@ -110,10 +110,10 @@ class stagerApi:
 
         if type(day) is str:
             request = requests.post(self.server_url + "crew/shifts/update-availability", headers=header,
-                                    json={"date": day, "available": available_str})
+                                    json={"date": day, "type": available_str})
         elif type(day) is object:
             request = requests.post(self.server_url + "crew/shifts/update-availability", headers=header,
-                                    json={"date": day.date().isoformat(), "available": available_str})
+                                    json={"date": day.date().isoformat(), "type": available_str})
         else:
             raise ValueError
 
@@ -121,6 +121,7 @@ class stagerApi:
             self.log.info(f"Successful POST request to {self.server_url}crew/shifts/update-availability", self.debug)
             return True
         else:
+            print(request.json())
             self.log.warn(f"Failed POST request to {self.server_url}crew/shifts/update-availability",
                           request.status_code, self.debug)
             return False

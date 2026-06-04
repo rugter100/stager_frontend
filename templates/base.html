@@ -69,9 +69,9 @@
     {% if messages %}
     <div class=" bs-component mt-3">
         {% for category, message in messages %}
-        <div class="alert alert-dismissible alert-{{ category }}">
-            {{ message }}
-            <button type="button" class="close" aria-label="Close" onclick="refreshPage()">×</button>
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
         {% endfor %}
     </div>

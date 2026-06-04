@@ -4,10 +4,17 @@
 
 
 {% block content %}
+<div id="errorAlert" class="alert alert-danger alert-dismissible fade show" role="alert" style="display: none;">
+          Missing error message
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
 <div class="container-fluid py-4 px-1">
     <h2 class="text-center mb-4">{{ lang.open_shifts.title }}</h2>
     <div class="d-flex flex-wrap gap-4 justify-content-center" id="shift-container">
         <!-- Cards -->
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
     </div>
 </div>
 <script>
@@ -29,9 +36,25 @@ function renderShifts(shiftsData) {
 
         const open = shift.open_shifts;
         if (!open || !open.shows) continue;
+
         const isChecked = open.isAvalible ? "checked" : "";
 
         let showBlocks = "";
+        let warningButton = "";
+
+        if (shift.hasOwnProperty("shifts")) {
+            warningButton = `
+                <button
+                    type="button"
+                    class="btn btn-warning btn-sm"
+                    data-bs-toggle="tooltip"
+                    data-bs-placement="top"
+                    title="You already have a shift on this date!"
+                >
+                    ⚠️
+                </button>
+            `;
+        }
 
         for (const [showName, shiftsList] of Object.entries(open.shows)) {
 
@@ -96,13 +119,17 @@ function renderShifts(shiftsData) {
                         <div class="form-check form-switch">
                             <input
                                 type="checkbox"
-                                class="form-check-input"
+                                class="form-check-input availability-switch"
                                 id="customSwitch_${key}"
+                                data-date="${key}"
                                 ${isChecked}
                             >
+
                             <label class="form-check-label" for="customSwitch_${key}">
                                 {{ lang.open_shifts.avalible }}
                             </label>
+
+                            ${warningButton}
                         </div>
 
                         ${showBlocks}
@@ -120,33 +147,85 @@ function renderShifts(shiftsData) {
 
         container.insertAdjacentHTML("beforeend", html);
     }
+
+    // tooltip init (unchanged)
+    const tooltipTriggerList = container.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipTriggerList.forEach(el => {
+        new bootstrap.Tooltip(el);
+    });
 }
 
-async function waitForPartialLoad() {
-    const container = document.getElementById("shift-container");
+// moved OUTSIDE renderShifts (important fix)
+function showError(message) {
+    const alertBox = document.getElementById("errorAlert");
+    const alertMessage = document.getElementById("errorAlert");
 
+    alertMessage.textContent = message;
+
+    alertBox.style.display = "block";
+    alertBox.classList.add("show");
+
+    setTimeout(() => {
+        alertBox.classList.remove("show");
+
+        setTimeout(() => {
+            alertBox.style.display = "none";
+        }, 150);
+    }, 4000);
+}
+
+document.addEventListener("change", async function (event) {
+
+    if (!event.target.classList.contains("availability-switch")) return;
+
+    const checkbox = event.target;
+    const date = checkbox.dataset.date;
+    const available = checkbox.checked;
+
+    try {
+        const response = await fetch("{{ url_for('update_availability') }}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                date: date,
+                available: available
+            })
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+            checkbox.checked = !available;
+            showError(result.error || "Something went wrong");
+        }
+
+    } catch (error) {
+        console.error("Failed to update availability:", error);
+        checkbox.checked = !available;
+        showError("Network error. Please try again.");
+    }
+});
+
+async function waitForPartialLoad() {
     while (true) {
         const res = await fetch("/api/loading_state");
         const state = await res.json();
 
-        if (state.partial_load) {
-            break;
-        }
+        if (state.partial_load) break;
 
         await new Promise(r => setTimeout(r, 300));
     }
 }
 
 async function waitForFullLoadAndUpdate() {
-    const container = document.getElementById("shift-container");
-
     let lastRenderedFull = false;
 
     while (!lastRenderedFull) {
         const res = await fetch("/api/loading_state");
         const state = await res.json();
 
-        // once partial load is ready → fetch data
         const shiftsRes = await fetch("/api/shifts");
         const shifts = await shiftsRes.json();
 
@@ -157,16 +236,16 @@ async function waitForFullLoadAndUpdate() {
             break;
         }
 
-        // small delay to avoid spamming server
         await new Promise(r => setTimeout(r, 1000));
     }
 }
 
 async function init() {
-    await waitForPartialLoad();   // wait until first data exists
-    await waitForFullLoadAndUpdate(); // keep updating until finished
+    await waitForPartialLoad();
+    await waitForFullLoadAndUpdate();
 }
 
 document.addEventListener("DOMContentLoaded", init);
 </script>
+<script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
 {% endblock %}
