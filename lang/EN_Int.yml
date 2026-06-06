@@ -69,6 +69,8 @@ details:
 open_shifts:
   title: "Open Shifts"
   avalible: "Avalability"
+  shifts_planned: "You already have shifts planned for this date!"
+  shifts_left_short: "open"
   role: "Role"
   start_end_time: "Start - End"
   length: "Length"

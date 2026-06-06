@@ -96,7 +96,7 @@ function renderShifts(shiftsData) {
                     class="btn btn-warning btn-sm"
                     data-bs-toggle="tooltip"
                     data-bs-placement="top"
-                    title="You already have a shift on this date!"
+                    title="{{ lang.open_shifts.shifts_planned }}"
                 >
                     ⚠️
                 </button>
@@ -124,13 +124,11 @@ function renderShifts(shiftsData) {
                         </th>
                         <td scope="row" style="width: 35%;">
                             ${formatTime(s.start)}
-                            -
-                            ${formatTime(s.end)}
-                            <br>
+                             -
                             ${s.length}
                         </td>
                         <td scope="row" style="width: 20%;">
-                            ${s.shiftIds.length} open
+                            ${s.shiftIds.length} {{ lang.open_shifts.shifts_left_short }}
                         </td>
                     </tr>
                 `;

@@ -70,6 +70,8 @@ details:
 open_shifts:
   title: "Open Diensten"
   avalible: "Beschikbaarheid"
+  shifts_planned: "Je hebt al shifts ingepland staan op deze datum!"
+  shifts_left_short: "open"
   role: "Functie"
   start_end_time: "Start - Eind"
   length: "Lengte"
