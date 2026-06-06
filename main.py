@@ -46,7 +46,7 @@ def load(reload=False):
     if cfg['dev_options']['devmode']:
         log.warn(
             "Developer mode is enabled! Do not use this mode in a deployment! If this mode is in use on a deployment no support will be provided!")
-    if not cfg['dev_options']['wipe_logs']:
+    if cfg['dev_options']['wipe_logs']:
         log.warn(
             "Log Wiping enabled! This wipes ALL logs! Do not use this mode in a deployment! If this mode is in use on a deployment no support will be provided!")
     log.delete_logs(delete_only_empty=not cfg['dev_options']['wipe_logs'])
