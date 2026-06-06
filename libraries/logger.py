@@ -4,8 +4,6 @@
 import os.path
 import datetime
 
-import yaml
-
 class _cache(object):
 
     def __init__(self):
@@ -23,7 +21,7 @@ class _cache(object):
     def listkeys(self):
         return list(self.data)
 
-class file_logger():
+class fileLogger:
 
     def __init__(self):
         self.cache = _cache()
@@ -53,9 +51,8 @@ class file_logger():
             time = self._get_time_now(True)
         info_log_file = f"logs/{name}/{time}_info.log"
         error_log_file = f"logs/{name}/{time}_errors.log"
-        with open(info_log_file, 'a') as info_file, open(error_log_file, 'a') as error_file:
-            self.cache['info', name] = info_log_file
-            self.cache['error', name] = error_log_file
+        self.cache['info', name] = info_log_file
+        self.cache['error', name] = error_log_file
         if default:
             self.defaultlog = name
         return time

@@ -5,24 +5,21 @@ import os
 import queue
 import re
 import yaml
-import requests
 import threading
 
 from datetime import datetime
 from werkzeug.middleware.proxy_fix import ProxyFix
-from flask import Flask, request, Response, render_template, abort, send_from_directory, url_for, redirect, session, \
-    flash, jsonify
+from flask import Flask, request, render_template, abort, url_for, redirect, flash, jsonify
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-from apscheduler.events import EVENT_JOB_MAX_INSTANCES
 
 import libraries.logger as logger
 import libraries.ntfy as ntfy
 import libraries.stagerApi as stagerApi
 import libraries.neushoorn_scraper as scrp
 
-log = logger.file_logger()
+log = logger.fileLogger()
 log.initialize('Main')
 log.info("Logging Initialized!")
 
@@ -35,6 +32,8 @@ scheduler = BackgroundScheduler(daemon=True)
 apscheduler_logger = logging.getLogger('apscheduler')
 apscheduler_logger.setLevel(logging.ERROR)  # Hide warnings & info from APScheduler internals
 
+
+# noinspection PyGlobalUndefined
 def load(reload=False):
     global cfg, stager, default_language, languages, shiftCache, siteCache, scraper, loading_state, user_cache
 
@@ -333,6 +332,14 @@ def index():
         next_url = "/home"
     return render_template('index.html', config=cfg, lang=lang, hide_nav=True, next_url=next_url)
 
+@app.route('/privacy-disclaimer')
+def disclaimer():
+    if current_user.is_authenticated:
+        lang = languages[user_cache[current_user.id]['lang']]
+    else:
+        lang = languages[cfg['gui']['language']]
+    return render_template('privacy-disclaimer.html', config=cfg, lang=lang, commit_date="06-06-2026")
+
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -359,8 +366,7 @@ def login():
                 break
         if not user_key:
             user_key = base64.b64encode(os.urandom(48)).decode('utf-8')
-            user_cache[user_key] = {"token": token, "username": username, "password": password,
-                                    "lang": cfg['gui']['language'], "last_cache": 0}
+            user_cache[user_key] = {"token": token, "username": username, "lang": cfg['gui']['language'], "last_cache": 0}
         user = User(id=user_key)
         login_user(user)
         lang = languages[user_cache[user_key]['lang']]
@@ -368,7 +374,11 @@ def login():
             shiftCache[user_key] = {}
         flash(lang['login']['login_successful'], 'success')
         log.info(f"User {username} logged in successfully")
-        return redirect(request.args.get("next_url"))
+        next_url = request.args.get("next_url")
+        if next_url:
+            return redirect(next_url)
+        else:
+            return abort(403)
     else:
         flash(languages[cfg['gui']['language']]['login']['invalid_creds'], 'danger')
         log.info(f"Invalid login attempt for user {username}")
@@ -460,19 +470,15 @@ def api_shifts():
     return jsonify(shiftCache[current_user.id])
 
 @app.route("/api/updateavailability", methods=["POST"])
-def update_availability(): # This isnt working yet im not sure why
-    return jsonify({"success": False, "error": "Sorry! This feature sadly isn't functional yet"})
+def update_availability():
     data = request.get_json()
 
-    if data['available']:
-        available = "AVAILABLE"
-    else:
-        available = "UNAVAILABLE"
-
-    stager_availability = stager.setAvalability(user_cache[current_user.id]['token'], data['date'], available)
+    stager_availability = stager.setAvalability(user_cache[current_user.id]['token'], data['date'], data['available'])
     if stager_availability:
         shiftCache[current_user.id][data['date']]['open_shifts']['isAvailable'] = data['available']
         return jsonify({"success": stager_availability})
+    else:
+        return jsonify({"success": False, "error": f"Sorry! Something went wrong when updating availability for {data['date']}"})
 
 
 @app.route('/shifts/<date>')

@@ -4,8 +4,6 @@ import json
 import requests
 import libraries.logger as logger
 
-import yaml
-
 class _cache(object):
 
     def __init__(self):
@@ -23,12 +21,12 @@ class _cache(object):
     def listkeys(self):
         return list(self.data)
 
-class send():
+class send:
 
     def __init__(self):
         self.topic = None
         self.cache = _cache()
-        self.log = logger.file_logger()
+        self.log = logger.fileLogger()
         self.log.initialize('ntfy')
         self.log.info("Logging Initialized!")
         with open(r'config.json') as f:

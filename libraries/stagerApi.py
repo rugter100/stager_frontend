@@ -1,12 +1,11 @@
 import requests
 import json
-from datetime import datetime
 import libraries.logger as logger
 
 
 class stagerApi:
-    def __init__(self, server_url, debug: bool = False) -> dict:
-        self.log = logger.file_logger()
+    def __init__(self, server_url, debug: bool = False) -> None:
+        self.log = logger.fileLogger()
         self.log.initialize("StagerApi")
         self.debug = debug
         self.server_url = server_url

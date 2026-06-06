@@ -25,6 +25,25 @@ login:
   must_be_logged_in: 'Jo moatte oanmeld wêze om dizze side te besjen'
   logged_out: 'Jo binne útlogd'
 
+disclaimer:
+  title: ""
+  text: ">- neho.stager.vmti.link (this website) is not endorsed, supported or maintained by Stager B.V., Stichting Popcultuur Neushoorn or Neushoorn B.V.
+  This is a hobby project made and maintained by Vamting and all issues, bugs and concerns should be sent to info@vamting.com. 
+  \n
+  This website is a simple tool giving users the ability to view their shifts, upcoming shifts and adjust avalability for the neushoorn stager.
+  Additionally to this it gathers data from other related sources to share more details and information about upcoming shifts.
+  This website does this by acting as a man in the middle between stager and the end user.
+  It has been done this way due to stager not supporting a Single Sign On (SSO) feature for this functionality.
+  This does mean this tool handles the users username and password, however it only saves the username and does not store the user's stager password.
+  Please be aware that this website does not follow intended ways to do this due to lack of SSO. 
+  You can verify our security regarding user passwords via our github: `https://github.com/rugter100/stager_frontend` 
+  This webpage is running the current latest commit from github (%date%).
+  Please be aware that this tool is a hobby project not designed for public use and should not be used as a definitive source of data from Stager or Neushoorn.
+  Any questions, concerns or issues should be reported to info@vamting.com.
+  \n
+  Cookies and Tracking: This website only makes use of cookies to retrieve if the user is logged in and what data to fetch for this user.
+  We do not use any kind of cookies or tracking systems to track users activity on this webpage."
+
 # Header/footer
 header:
   pages: "᎒᎒᎒"

@@ -1,14 +1,13 @@
 import requests
 from bs4 import BeautifulSoup
 import re
-from datetime import datetime
 import libraries.logger as logger
 
 
 class Scraper:
     def __init__(self, debug: bool = False):
         self.url = "https://www.neushoorn.nl/programma"
-        self.log = logger.file_logger()
+        self.log = logger.fileLogger()
         self.log.initialize("NHScraper")
         self.debug = debug
 

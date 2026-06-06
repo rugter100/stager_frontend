@@ -53,7 +53,7 @@
             </button>
             <ul class="dropdown-menu dropdown-menu-end" style="">
                 {% for lang_key, lang_option in languages.items() %}
-                <li><a class="dropdown-item" href="{{ url_for('update_language', next=active_page, lang=lang_key) }}">{{ lang_option.language_name }}</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('update_language', next='/' + active_page, lang=lang_key) }}">{{ lang_option.language_name }}</a></li>
                 {% endfor %}
             </ul>
         </div>
@@ -83,7 +83,7 @@
         {% endblock %}
     </main>
     <footer class="bg-body-tertiary">
-        &copy; 2025 Vamting IT
+        &copy; 2025 Vamting IT ● <a href="https://discord.gg/FJXqfUm6qR">Discord</a> ● <a href="/privacy-disclaimer">Privacy and user data information</a>
     </footer>
 </div>
 <script src="{{ url_for('static', filename='js/popper.min.js') }}"></script>
