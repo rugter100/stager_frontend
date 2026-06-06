@@ -70,6 +70,12 @@ details:
 open_shifts:
   title: "Open Diensten"
   avalible: "Beschikbaarheid"
+  role: "Functie"
+  start_end_time: "Start - Eind"
+  length: "Lengte"
+  shifts_left: "Shifts Over"
+  request: "Verzoek Dienst"
+  close: "Sluiten"
 
 past_shifts:
   title: "Verleden Diensten"

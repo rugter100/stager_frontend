@@ -70,6 +70,12 @@ details:
 open_shifts:
   title: "Iepen Tsjinsten"
   avalible: "Beskikberens"
+  role: "Tsjinst"
+  start_end_time: "Start - Ein"
+  length: "Doer"
+  shifts_left: "Tsjinsten fergees"
+  request: "Fersyk tsjinst"
+  close: "Slute"
 
 past_shifts:
   title: "Past Tsjinsten"

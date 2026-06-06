@@ -16,6 +16,51 @@
           <span class="visually-hidden">Loading...</span>
         </div>
     </div>
+    <div class="modal fade" id="shiftModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalEvent"></h5>
+
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal">
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <table class="table">
+
+                    <tr>
+                        <th>{{ lang.open_shifts.role }}</th>
+                        <td id="modalRole"></td>
+                    </tr>
+
+                    <tr>
+                        <th>{{ lang.open_shifts.start_end_time }}</th>
+                        <td id="modalStartEnd"></td>
+                    </tr>
+
+                    <tr>
+                        <th>{{ lang.open_shifts.length }}</th>
+                        <td id="modalLength"></td>
+                    </tr>
+
+                    <tr>
+                        <th>{{ lang.open_shifts.shifts_left }}</th>
+                        <td id="modalShiftIds"></td>
+                    </tr>
+
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ lang.open_shifts.close }}</button>
+            </div>
+        </div>
+    </div>
+</div>
 </div>
 <script>
 function formatTime(isoString) {
@@ -26,6 +71,8 @@ function formatTime(isoString) {
         minute: "2-digit"
     }).format(date);
 }
+
+const shiftStore = {};
 
 function renderShifts(shiftsData) {
     const container = document.getElementById("shift-container");
@@ -58,23 +105,36 @@ function renderShifts(shiftsData) {
 
         for (const [showName, shiftsList] of Object.entries(open.shows)) {
 
-            const shiftLines = shiftsList.map(s => `
-                <tr>
-                    <th scope="row" style="width: 35%; overflow: hidden; text-overflow: ellipsis;">
-                        ${s.role}
-                    </th>
-                    <td scope="row" style="width: 35%;">
-                        ${formatTime(s.start)}
-                        -
-                        ${formatTime(s.end)}
-                        </br>
-                        ${s.length}
-                    </td>
-                    <td scope="row" style="width: 20%;">
-                        ${s.shiftIds.length} open
-                    </td>
-                </tr>
-            `).join("");
+            const shiftLines = shiftsList.map(s => {
+
+                const shiftId = s.shiftIds[0];
+
+                shiftStore[shiftId] = s;
+
+                return `
+                    <tr
+                        class="shift-row"
+                        data-shift-id="${shiftId}"
+                        data-bs-toggle="modal"
+                        data-bs-target="#shiftModal"
+                        style="cursor: pointer;"
+                    >
+                        <th scope="row" style="width: 35%; overflow: hidden; text-overflow: ellipsis;">
+                            ${s.role}
+                        </th>
+                        <td scope="row" style="width: 35%;">
+                            ${formatTime(s.start)}
+                            -
+                            ${formatTime(s.end)}
+                            <br>
+                            ${s.length}
+                        </td>
+                        <td scope="row" style="width: 20%;">
+                            ${s.shiftIds.length} open
+                        </td>
+                    </tr>
+                `;
+            }).join("");
 
             showBlocks += `
                 <div class="mx-auto">
@@ -154,8 +214,29 @@ function renderShifts(shiftsData) {
         new bootstrap.Tooltip(el);
     });
 }
+document.addEventListener("click", function(event) {
 
-// moved OUTSIDE renderShifts (important fix)
+    const row = event.target.closest(".shift-row");
+
+    if (!row) return;
+
+    const shift = shiftStore[row.dataset.shiftId];
+
+    document.getElementById("modalRole").textContent =
+        shift.role;
+
+    document.getElementById("modalEvent").textContent =
+        shift.eventName;
+
+    document.getElementById("modalStartEnd").textContent =
+        formatTime(shift.start) + ' - ' + formatTime(shift.end);
+
+    document.getElementById("modalLength").textContent =
+        shift.length;
+
+    document.getElementById("modalShiftIds").textContent =
+        shift.shiftIds.length;
+});
 function showError(message) {
     const alertBox = document.getElementById("errorAlert");
     const alertMessage = document.getElementById("errorAlert");

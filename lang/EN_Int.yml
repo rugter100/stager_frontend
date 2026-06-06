@@ -69,6 +69,12 @@ details:
 open_shifts:
   title: "Open Shifts"
   avalible: "Avalability"
+  role: "Role"
+  start_end_time: "Start - End"
+  length: "Length"
+  shifts_left: "Shifts Left"
+  request: "Request Shift"
+  close: "Close"
 
 past_shifts:
   title: "Past Shifts"
