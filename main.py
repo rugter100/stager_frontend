@@ -378,8 +378,6 @@ def login():
         if token != "test":
             profile_data = stager.profile(token)
             current_account = stager.currentAccount(token)
-            print(current_account)
-            print(profile_data)
             user_cache[user_key] = {"token": token, "username": username, "lang": cfg['gui']['language'],
                                     "last_cache": 0, "fullName": profile_data['fullName'], "roles": profile_data['roles'],
                                     "preferences": profile_data['preferences'],

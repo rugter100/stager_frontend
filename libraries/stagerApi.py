@@ -120,7 +120,6 @@ class stagerApi:
             self.log.info(f"Successful POST request to {self.server_url}crew/shifts/update-availability", self.debug)
             return True
         else:
-            print(request.json())
             self.log.warn(f"Failed POST request to {self.server_url}crew/shifts/update-availability",
                           request.status_code, self.debug)
             return False
