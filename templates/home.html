@@ -47,6 +47,34 @@ function renderShifts(shifts) {
             `)
             .join("");
 
+        const isArtistHostShift = upcomingShifts.some(
+            s => s.role === "Artist Host 1" || s.role === "Artist Host 2"
+        );
+
+        const artistHosts = isArtistHostShift
+            ? shift.colleagues
+                .filter(c =>
+                    (c.role === "Artist Host 1" || c.role === "Artist Host 2") &&
+                    c.crewMemberName !== "{{ user_data.fullName }}"
+                )
+                .map(c => {
+                    const firstName = c.crewMemberName.split(" ")[0];
+                    return `${firstName} (${formatTime(c.start)})`;
+                })
+            : [];
+
+        const artistHostLabel = isArtistHostShift
+        ? `
+            <label class="form-label d-block text-center">
+                ${
+                    artistHosts.length
+                        ? `Other Hosts: ${artistHosts.join(" & ")}`
+                        : "No other hosts planned"
+                }
+            </label>
+        `
+        : "";
+
         const shiftBodies = upcomingShifts.map(s => `
             <label class="form-label d-block text-center">
                 ${s.role}
@@ -57,6 +85,7 @@ function renderShifts(shifts) {
                 -
                 ${s.length}
             </label>
+            ${artistHostLabel}
         `).join("");
 
         const html = `

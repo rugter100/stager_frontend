@@ -15,6 +15,7 @@
         .wrapper {
             display: flex;
             flex-direction: column;
+            overflow: visible;
             min-height: 100vh;
         }
 
@@ -32,46 +33,69 @@
 <body>
 <div class="wrapper">
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-    <a class="navbar-brand" href="{{ url_for('index', next='home') }}">{{ config.presetup.company_name }}</a>
+        <div class="container-fluid px-3 d-flex align-items-center">
+            <div class="d-flex align-items-center">
+                <button type="submit" class="btn p-0 border-0 bg-transparent ps-1">
+                    <img src="{{ url_for('static', filename='media/favicon.ico') }}" width="36" height="36">
+                </button>
+            </div>
 
-    <div class="navbar-nav flex-row gap-3">
+            <div class="d-flex align-items-center gap-3 ms-auto">
 
-        <div class="dropdown">
-            <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                {{ lang.header.pages }}
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end" style="">
-                <li><a class="dropdown-item" href="{{ url_for('home') }}">{{ lang.header.homepage }}</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('open_shifts') }}">{{ lang.header.avalible_shifts }}</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('past_shifts') }}">{{ lang.header.past_shifts }}</a></li>
-            </ul>
+                <div class="dropdown">
+                    <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown"
+                            aria-expanded="false">
+                        {{ lang.header.pages }}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" style="">
+                        <li><a class="dropdown-item" href="{{ url_for('home') }}">{{ lang.header.homepage }}</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('open_shifts') }}">{{ lang.header.avalible_shifts
+                            }}</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('past_shifts') }}">{{ lang.header.past_shifts
+                            }}</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ url_for('settings') }}">{{ lang.header.settings
+                            }}</a></li>
+                    </ul>
+                </div>
+
+                <div class="dropdown">
+                    <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown"
+                            aria-expanded="false">
+                        {{ lang.header.language }}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" style="">
+                        {% for lang_key, lang_option in languages.items() %}
+                        <li><a class="dropdown-item"
+                               href="{{ url_for('update_language', next='/' + active_page, lang=lang_key) }}">{{
+                            lang_option.language_name }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                {% if active_page != 'settings' %}
+                <form method="get" class="d-inline" action="{{ url_for('settings') }}">
+                {% endif %}
+                    <button class="btn p-0 border-0 bg-transparent" {% if active_page == 'settings' %}data-bs-toggle="modal" data-bs-target="#exampleModal"{% endif %}>
+                        <img src="{{ user_data.profilePicture }}"
+                             class="rounded-circle"
+                             width="36"
+                             height="36"
+                             alt="Logout">
+                    </button>
+                {% if active_page != 'settings' %}
+                </form>
+                {% endif %}
+            </div>
         </div>
-
-        <div class="dropdown">
-            <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                {{ lang.header.language }}
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end" style="">
-                {% for lang_key, lang_option in languages.items() %}
-                <li><a class="dropdown-item" href="{{ url_for('update_language', next='/' + active_page, lang=lang_key) }}">{{ lang_option.language_name }}</a></li>
-                {% endfor %}
-            </ul>
-        </div>
-
-        <form action="{{ url_for('logout') }}" method="post" class="d-inline">
-            <button type="submit" class="btn btn-link nav-link">
-                {{ lang.header.log_out }}
-            </button>
-        </form>
-    </div>
-</nav>
+    </nav>
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
     <div class=" bs-component mt-3">
         {% for category, message in messages %}
         <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-          {{ message }}
-          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
         {% endfor %}
     </div>
@@ -83,7 +107,7 @@
         {% endblock %}
     </main>
     <footer class="bg-body-tertiary">
-        &copy; 2025 Vamting IT ● <a href="https://discord.gg/FJXqfUm6qR">Discord</a> ● <a href="/privacy-disclaimer">Privacy and user data information</a>
+        &copy; 2026 Vamting IT ● <a href="https://discord.gg/FJXqfUm6qR">Discord</a> ● <a href="/privacy-disclaimer">{{ lang.footer.privacy_info }}</a>
     </footer>
 </div>
 <script src="{{ url_for('static', filename='js/popper.min.js') }}"></script>

@@ -4,14 +4,15 @@ language_name: "English"
 #page titles
 page_title:
   login_title: "Login"
-  home: "Homepage"
+  home: "Upcoming Shifts"
   account: "Account"
   settings: "Settings"
   open_shifts: "Open Shifts"
   past_shifts: "Past Shifts"
 
-messages:
+message:
   unknown_shift: "That shift is unknown to us. Sorry! If you believe this to be a bug please let us know"
+  not_functional: "Sorry, this functionality isn't ready yet."
 
 # Login Page /
 login:
@@ -53,10 +54,29 @@ header:
   settings: "Settings"
   language: "Language"
 
+footer:
+  privacy_info: "Privacy and user data information"
+
 # Homepage Translations /home
 home:
   title: "Upcoming Shifts"
   details: "Details"
+
+settings:
+  update_profile_pic: "Update Profile Picture"
+  close: "Close"
+  save_changes: "Save Changes"
+
+  details: "User Details"
+  name: "Name: "
+  phone_no: "Phone Number: "
+  address: "Address: "
+  postal_city: "Postal Code: "
+  country: "Country: "
+  birth_date: "Birth Date: "
+  roles: "Roles: "
+
+  user_preferences: "User Preferences"
 
 details:
   title: "Details"

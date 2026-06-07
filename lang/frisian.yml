@@ -5,14 +5,15 @@ language_name: "Frysk"
 #page titles
 page_title:
   login_title: "Oanmelde"
-  home: "thússide"
+  home: "Folgjende Tsjinsten"
   account: "Account"
   settings: "Ynstellings"
   open_shifts: "Iepen Tsjinsten"
   past_shifts: "Past Tsjinsten"
 
-messages:
+message:
   unknown_shift: "Dy Tsjinst is ûnbekend yn ús systeem! Lit ús witte as jo tinke dat dit in bug is."
+  not_functional: "Sorry, spitigernôch is dit noch net funksjoneel."
 
 # Login Page /
 login:
@@ -54,10 +55,29 @@ header:
   settings: "Ynstellings"
   language: "Taal"
 
+footer:
+  privacy_info: "Privacy en ynformaasje oer brûkersgegevens"
+
 # Homepage Translations /home
 home:
   title: "Folgjende Tsjinsten"
   details: "Details"
+
+settings:
+  update_profile_pic: "Profylfoto"
+  close: "Slute"
+  save_changes: "Rêde"
+
+  details: "Persoanlike ynformaasje"
+  name: "Namme: "
+  phone_no: "Tillefoannûmer: "
+  address: "Adres: "
+  postal_city: "Postkoade: "
+  country: "Lân: "
+  birth_date: "Geboortedatum: "
+  roles: "Funksjes: "
+
+  user_preferences: "Brûker foarkar"
 
 details:
   title: "Details"

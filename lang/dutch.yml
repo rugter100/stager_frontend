@@ -5,14 +5,15 @@ language_name: "Nederlands"
 #page titles
 page_title:
   login_title: "Login"
-  home: "Homepagina"
+  home: "Volgende diensten"
   account: "Account"
   settings: "Instellingen"
   open_shifts: "Open Diensten"
   past_shifts: "Verleden Diensten"
 
-messages:
+message:
   unknown_shift: "Die shift is onbekend is ons systeem! Laat ons weten als je denkt dat dit een bug is."
+  not_functional: "Sorry, dit is helaas nog niet functioneel."
 
 # Login Page /
 login:
@@ -54,10 +55,29 @@ header:
   settings: "Instellingen"
   language: "Taal"
 
+footer:
+  privacy_info: "Privacy en gebruikersdata informatie"
+
 # Homepage Translations /home
 home:
   title: "Volgende Diensten"
   details: "Details"
+
+settings:
+  update_profile_pic: "Update Profielfoto"
+  close: "Sluiten"
+  save_changes: "Opslaan"
+
+  details: "Persoonlijke info"
+  name: "Naam: "
+  phone_no: "Telefoonnr: "
+  address: "Adres: "
+  postal_city: "Postcode: "
+  country: "Land: "
+  birth_date: "Geboortedatum: "
+  roles: "Rollen: "
+
+  user_preferences: "Gebruikersvoorkeuren"
 
 details:
   title: "Details"

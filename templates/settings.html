@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ config.presetup.company_name }} | {{ lang.page_title.settings }}{% endblock %}
+
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex flex-wrap justify-content-center gap-4" id="shift-container">
+
+        <div class="card bg-dark" style="width:320px;">
+            <div class="card-header text-center">{{ lang.settings.details }}</div>
+
+            <div class="card-body p-3">
+                <ul class="list-group">
+                    {% if user_data.fullName %}
+                    <li class="list-group-item"><strong>{{ lang.settings.name }}</strong>{{ user_data.fullName }}</li>
+                    {% endif %}
+                    {% if user_data.phoneNumber %}
+                    <li class="list-group-item"><strong>{{ lang.settings.phone_no }}</strong>{{ user_data.phoneNumber }}</li>
+                    {% endif %}
+                    {% if user_data.address %}
+                    <li class="list-group-item"><strong>{{ lang.settings.address }}</strong>{{ user_data.address }}</li>
+                    {% endif %}
+                    {% if user_data.postalCode and user_data.city %}
+                    <li class="list-group-item"><strong>{{ lang.settings.postal_city }}</strong>{{ user_data.postalCode }}, {{ user_data.city }}</li>
+                    {% endif %}
+                    {% if user_data.country %}
+                    <li class="list-group-item"><strong>{{ lang.settings.country }}</strong>{{ user_data.country }}</li>
+                    {% endif %}
+                    {% if user_data.birthDate %}
+                    <li class="list-group-item"><strong>{{ lang.settings.birth_date }}</strong>{{ user_data.birthDate }}</li>
+                    {% endif %}
+                    <li class="list-group-item"><strong>{{ lang.settings.roles }}</strong>{{ ', '.join(user_data.roles) }}</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- Modal -->
+    <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="exampleModalLabel">{{ lang.settings.update_profile_pic }}</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                    <div class="modal-body text-center">
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            {{ lang.message.not_functional }}
+                        </div>
+                        <button class="btn p-0 border-0 bg-transparent">
+                            <img src="{{ user_data.profilePicture }}"
+                                 class="rounded-circle"
+                                 width="360"
+                                 height="360">
+                        </button>
+                    </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ lang.settings.update_profile_pic }}</button>
+                    <button type="button" class="btn btn-primary">{{ lang.settings.save_changes }}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+
+</script>
+{% endblock %}

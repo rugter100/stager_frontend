@@ -26,8 +26,8 @@ class stagerApi:
     def currentAccount(self, sessionToken: str) -> dict:
         header = self.headers.copy()
         header["Authorization"] = "Bearer " + sessionToken
-        request = requests.post(self.server_url + "sign-in/account/current", headers=header)
-        self.log.info(f"Successful POST request to {self.server_url}sign-in/account/current", self.debug)
+        request = requests.get(self.server_url + "sign-in/account/current", headers=header)
+        self.log.info(f"Successful GET request to {self.server_url}sign-in/account/current", self.debug)
         return request.json()
 
     def profile(self, sessionToken: str) -> dict:
