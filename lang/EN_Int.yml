@@ -75,6 +75,7 @@ settings:
   country: "Country: "
   birth_date: "Birth Date: "
   roles: "Roles: "
+  travel_costs: "Download Travel Costs Declaration"
 
   user_preferences: "User Preferences"
 

@@ -76,6 +76,7 @@ settings:
   country: "Land: "
   birth_date: "Geboortedatum: "
   roles: "Rollen: "
+  travel_costs: "Download declaratieformulier kilometervergoeding"
 
   user_preferences: "Gebruikersvoorkeuren"
 
