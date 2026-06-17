@@ -161,6 +161,7 @@ def update_caches(id: str, get_open_shifts=True, skip_scrape=False, date=False):
     #"""
     rawShiftsDict = stager.assignedShifts(user_cache[id]['token'])['myShiftsByDate']
 
+    log.info('Getting shifts')
     # Get shift details from stager for each date found in rawShiftsDict
     for shifts in rawShiftsDict:
         if date and date != shifts['date']:
@@ -237,6 +238,7 @@ def update_caches(id: str, get_open_shifts=True, skip_scrape=False, date=False):
                     else:
                         shift["state"] = "cancelled"
 
+    log.info('Getting open shifts')
     if get_open_shifts:
         rawOpenShifts = stager.openShifts(user_cache[id]['token'])['openShiftsByDate']
         for show_date in rawOpenShifts:
@@ -257,9 +259,23 @@ def update_caches(id: str, get_open_shifts=True, skip_scrape=False, date=False):
 
             shiftCache[id][show_date['date']]['open_shifts'] = temp_dict
 
-            # shiftCache[id][shift['date']]['openShifts'] = shift
+    log.info("Clearing past open shifts from cache")
+    #Clear past shifts
+    for show_date, date_data in sorted(shiftCache[id].items()):
+        if datetime.fromisoformat(show_date) >= datetime.now():
+            break
+        else:
+            if 'open_shifts' in date_data.keys():
+                if 'shifts' in date_data.keys():
+                    print("Deleting Open Shift")
+                    del shiftCache[id][show_date]['open_shifts']
+                else:
+                    print("Deleting empty date")
+                    del shiftCache[id][show_date]
+
     #"""
 
+    log.info("Scraping neushoorn.nl")
     # Get data from neushoorn website
     if not skip_scrape:
         if date:
@@ -285,6 +301,7 @@ def update_caches(id: str, get_open_shifts=True, skip_scrape=False, date=False):
                     siteCache[key]['shows'] = program_data
                 siteCache[key]['last_updated'] = datetime.now().timestamp()
                 loading_state[id]['partial_load'] = True
+    log.info("Finished Update")
     loading_state[id] = {'partial_load': True, 'full_load': True}
     loading_state['running'] = False
 
@@ -378,21 +395,24 @@ def login():
         if token != "test":
             profile_data = stager.profile(token)
             current_account = stager.currentAccount(token)
-            user_cache[user_key] = {"token": token, "username": username, "lang": cfg['gui']['language'],
-                                    "last_cache": 0, "fullName": profile_data['fullName'], "roles": profile_data['roles'],
-                                    "preferences": profile_data['preferences'],
-                                    "profilePicture": profile_data['profilePicture'],
-                                    "phoneNumber": profile_data['phoneNumber'], "address": profile_data['address'],
-                                    "postalCode": profile_data['postalCode'], "city": profile_data['city'],
-                                    "country": profile_data['country'], "birthDate": profile_data['birthDate'],
-                                    "permissions": current_account['permissions'],
-                                    "featureFlags": current_account['featureFlags'],
-                                    "intercomAndroidUserHash": current_account['intercomAndroidUserHash'],
-                                    "intercomIosUserHash": current_account['intercomIosUserHash'],
-                                    "crewMemberId": current_account['crewMemberId'],
-                                    "crewMemberCanSeeColleagues": current_account['crewMemberCanSeeColleagues'],
-                                    "crewMemberAvailabilityType": current_account['crewMemberAvailabilityType'],
-                                    "lastLogin": current_account['lastLogin']}
+
+            user_cache[user_key] = {"token": token, "username": username, "lang": cfg['gui']['language'], "last_cache": 0}
+
+            user_keys_pdata = ['fullName', 'roles', 'preferences', 'profilePicture', 'phoneNumber', 'address', 'postalCode', 'city', 'country', 'birthDate']
+            for key in user_keys_pdata:
+                if key in profile_data.keys():
+                    data = profile_data[key]
+                else:
+                    data = ''
+                user_cache[user_key][key] = data
+
+            user_keys_curracc = ['permissions', 'featureFlags', 'intercomAndroidUserHash', 'intercomIosUserHash', 'crewMemberId', 'crewMemberCanSeeColleagues', 'crewMemberAvailabilityType', 'lastLogin']
+            for key in user_keys_curracc:
+                if key in current_account.keys():
+                    data = current_account[key]
+                else:
+                    data = ''
+                user_cache[user_key][key] = data
         if user_key not in shiftCache.keys():
             shiftCache[user_key] = {}
 
