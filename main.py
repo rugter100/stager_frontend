@@ -177,14 +177,23 @@ def update_caches(id: str, get_open_shifts=True, skip_scrape=False, date=False):
         log.info(f"Updating shift details for: {shifts['date']}")
         # Get colleagues if not already in cache and/or not recently updated
         colleagues = stager.colleagues(user_cache[id]['token'], shifts['date'])
-        shift_number = 0
-        for colleague in colleagues['groupsByEvent'][0]['shiftsByTeam'][0]['shifts']:
-            shift_length = datetime.fromisoformat(colleague['end']) - datetime.fromisoformat(colleague['start'])
-            shift_length = int(shift_length.total_seconds())
-            hours = round(shift_length / 3600, 2)
-            shift_length = f"{hours}h"
-            colleagues['groupsByEvent'][0]['shiftsByTeam'][0]['shifts'][shift_number]['length'] = shift_length
-            shift_number += 1
+
+        # Might be nice to start implementing team label support? Already implemented the team being added to the crewmember
+
+        colleagues_parsed = []
+        team_number = 0
+        for team in colleagues['groupsByEvent'][0]['shiftsByTeam']:
+            shift_number = 0
+            for colleague in team['shifts']:
+                shift_length = datetime.fromisoformat(colleague['end']) - datetime.fromisoformat(colleague['start'])
+                shift_length = int(shift_length.total_seconds())
+                hours = round(shift_length / 3600, 2)
+                shift_length = f"{hours}h"
+                colleague['length'] = shift_length
+                colleague['team'] = team['team']
+                colleagues_parsed.append(colleague)
+                shift_number += 1
+            team_number += 1
 
         # Sort colleague list based on function
         order_lookup = {
@@ -192,7 +201,7 @@ def update_caches(id: str, get_open_shifts=True, skip_scrape=False, date=False):
             for index, role in enumerate(cfg['gui']['function_order'])
         }
         sorted_shifts = sorted(
-            colleagues['groupsByEvent'][0]['shiftsByTeam'][0]['shifts'],
+            colleagues_parsed,
             key=lambda shift: order_lookup.get(
                 shift["role"],
                 float("inf")  # unknown roles go to the end
